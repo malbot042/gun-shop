@@ -59,13 +59,15 @@ function elementToObj(el) {
     case 'corcho': {
       const L = el.largo ?? 1, H = el.alto ?? 2;
       if (gs.type === 'softcover') return { ...base, type: 'softcover', length: L, height: H, elev };
-      if (gs.type === 'glasswall' || (el.tipo === 'muro' && (el.transparencia ?? 0) >= 80))
-        return { ...base, type: 'glasswall', length: L, height: H, elev, blocks: gs.blocks !== false };
-      return { ...base, type: H <= 1.2 ? 'lowwall' : 'wall', length: L, height: H, elev };
+      if (gs.type === 'glasswall') return { ...base, type: 'glasswall', length: L, height: H, elev, blocks: gs.blocks !== false };
+      // color y transparencia tal cual los dice el stage
+      return { ...base, type: H <= 1.2 ? 'lowwall' : 'wall', variant: el.tipo, length: L, height: H, elev,
+        color: el.color || DEFAULTS[el.tipo].color, transparency: el.transparencia ?? 0 };
     }
     case 'puerto': {
       const h = el.hueco || {};
-      return { ...base, type: 'port', length: el.largo ?? 1, height: el.alto ?? 2, elev, holeW: h.ancho ?? 0.7, holeH: h.alto ?? 0.4, holeElev: h.elevacion ?? 1.4 };
+      return { ...base, type: 'port', length: el.largo ?? 1, height: el.alto ?? 2, elev, holeW: h.ancho ?? 0.7, holeH: h.alto ?? 0.4, holeElev: h.elevacion ?? 1.4,
+        color: el.color || 'marron', transparency: el.transparencia ?? 0 };
     }
     case 'falta': return { ...base, type: 'faultline', length: el.largo ?? 3 };
     case 'zona': return { ...base, type: 'zone', width: el.ancho ?? 1, depth: el.fondo ?? 1 };
@@ -122,6 +124,7 @@ const DEFAULTS = {
   popper: { alto: 0.85, elevacion: 0 },
   metal: { diametro: 0.2, elevacion: 1.0 },
   muro: { largo: 1, alto: 2, color: 'marron', transparencia: 0, elevacion: 0 },
+  chapa: { largo: 1, alto: 2, color: 'gris', transparencia: 0, elevacion: 0 },
   corcho: { largo: 0.6, alto: 1.2, color: 'blanco', transparencia: 0, elevacion: 0 },
   puerto: { largo: 1, alto: 2, hueco: { ancho: 0.7, alto: 0.4, elevacion: 1.4 }, color: 'marron', transparencia: 0, elevacion: 0 },
   falta: { largo: 3 },
@@ -161,9 +164,9 @@ function objToElement(o, yOff) {
       break;
     }
     case 'wall': case 'lowwall':
-      tipo = keepTipo('muro', ['muro', 'chapa', 'corcho']);
-      props = { largo: o.length ?? 2, alto: o.height ?? (o.type === 'wall' ? 2 : 1), elevacion: o.elev || 0 };
-      if (tipo === 'muro' && (prev.transparencia ?? 0) >= 80) props.transparencia = 0;
+      tipo = ['muro', 'chapa', 'corcho'].includes(o.variant) ? o.variant : keepTipo('muro', ['muro', 'chapa', 'corcho']);
+      props = { largo: o.length ?? 2, alto: o.height ?? (o.type === 'wall' ? 2 : 1), elevacion: o.elev || 0,
+        color: o.color || DEFAULTS[tipo].color, transparencia: o.transparency ?? 0 };
       break;
     case 'glasswall':
       tipo = 'muro';
@@ -177,7 +180,8 @@ function objToElement(o, yOff) {
       break;
     case 'port':
       tipo = 'puerto';
-      props = { largo: o.length ?? 1, alto: o.height ?? 2, elevacion: o.elev || 0, hueco: { ancho: o.holeW ?? 0.7, alto: o.holeH ?? 0.4, elevacion: o.holeElev ?? 1.4 } };
+      props = { largo: o.length ?? 1, alto: o.height ?? 2, elevacion: o.elev || 0, hueco: { ancho: o.holeW ?? 0.7, alto: o.holeH ?? 0.4, elevacion: o.holeElev ?? 1.4 },
+        color: o.color || 'marron', transparencia: o.transparency ?? 0 };
       break;
     case 'faultline': tipo = 'falta'; props = { largo: o.length ?? 3 }; break;
     case 'zone': tipo = 'zona'; props = { ancho: o.width ?? 1, fondo: o.depth ?? 1 }; break;

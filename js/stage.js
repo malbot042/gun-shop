@@ -144,6 +144,78 @@ export function buildRange(scene) {
   return { group: g, shootables };
 }
 
+// ---------- Parapetos (como en el Stage Designer de tiropractico.es) ----------
+// Color y transparencia los da el stage: `color` (marron, metal, blanco, salmon, negro, gris) y
+// `transparency` (0–100 %). Marco opaco de 5 cm (también alrededor del hueco del puerto); el corcho
+// no tiene marco. La transparencia es solo visual: el parapeto sigue deteniendo la bala.
+export const PARAPET_VARIANTS = {
+  muro:   { label: 'Muro / barricada (madera)', colors: { marron: 'Marrón', metal: 'Metálico', blanco: 'Blanco' }, def: 'marron', frame: true },
+  chapa:  { label: 'Muro de metal', colors: { negro: 'Negro', gris: 'Gris' }, def: 'gris', frame: true },
+  corcho: { label: 'Corcho', colors: { blanco: 'Blanco', salmon: 'Salmón' }, def: 'blanco', frame: false },
+};
+const PARAPET_RGB = { metal: 0x9aa3ad, blanco: 0xf2f2f2, salmon: 0xf4a582, negro: 0x2b2e33, gris: 0x8a9099 };
+const WOOD = 0x9b6b3d, PORT_WOOD = 0xa0703c, FRAME = 0.05;
+const parapetMatCache = {};
+function parapetMat(color, opacity, metallic) {
+  const key = color + '|' + opacity + '|' + metallic;
+  if (!parapetMatCache[key]) {
+    parapetMatCache[key] = new THREE.MeshStandardMaterial({
+      color, roughness: metallic ? 0.4 : 0.85, metalness: metallic ? 0.6 : 0,
+      transparent: opacity < 1, opacity, depthWrite: opacity >= 1,
+    });
+  }
+  return parapetMatCache[key];
+}
+export function parapetVariant(obj) { return obj.type === 'port' ? 'muro' : (PARAPET_VARIANTS[obj.variant] ? obj.variant : 'muro'); }
+function buildParapet(g, meshes, obj, L, H, hole) {
+  const variant = parapetVariant(obj);
+  const vdef = PARAPET_VARIANTS[variant];
+  const colorKey = obj.color in PARAPET_RGB || obj.color === 'marron' ? obj.color : (hole ? 'marron' : vdef.def);
+  const rgb = PARAPET_RGB[colorKey] ?? (hole ? PORT_WOOD : WOOD);
+  const metallic = colorKey === 'metal' || variant === 'chapa';
+  const op = 1 - THREE.MathUtils.clamp(obj.transparency ?? 0, 0, 100) / 100;
+  const frameM = parapetMat(rgb, 1, metallic);
+  const fillM = parapetMat(rgb, op, metallic);
+  const add = (w, h, d, m, x, y, isFill) => {
+    if (w <= 0.001 || h <= 0.001) return;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+    b.position.set(x, y, 0);
+    b.castShadow = !isFill || op > 0.5;
+    b.receiveShadow = true;
+    if (isFill && op <= 0) b.visible = false; // 100 %: solo el marco (pero sigue deteniendo la bala)
+    if (isFill && op < 1) b.renderOrder = 2;
+    b.userData.hit = { kind: 'hard', wall: true };
+    g.add(b); meshes.push(b);
+  };
+  const marco = (w, h, x, y) => {
+    add(w, FRAME, 0.11, frameM, x, y - h / 2 + FRAME / 2);
+    add(w, FRAME, 0.11, frameM, x, y + h / 2 - FRAME / 2);
+    add(FRAME, h - 2 * FRAME, 0.11, frameM, x - w / 2 + FRAME / 2, y);
+    add(FRAME, h - 2 * FRAME, 0.11, frameM, x + w / 2 - FRAME / 2, y);
+  };
+  const panel = (w, h, x, y) => add(w, h, 0.1, fillM, x, y, true);
+  if (!vdef.frame && !hole) {
+    panel(L, H, 0, H / 2);
+  } else if (!hole) {
+    marco(L, H, 0, H / 2);
+    panel(L - 2 * FRAME, H - 2 * FRAME, 0, H / 2);
+  } else {
+    marco(L, H, 0, H / 2);
+    const hw = Math.min(hole.w, L - 0.1), hb = hole.elev, ht = Math.min(hb + hole.h, H);
+    const sideW = (L - hw) / 2;
+    panel(sideW - FRAME, H - 2 * FRAME, -(hw / 2 + (sideW - FRAME) / 2), H / 2);
+    panel(sideW - FRAME, H - 2 * FRAME, hw / 2 + (sideW - FRAME) / 2, H / 2);
+    if (hb > FRAME) panel(hw, hb - FRAME, 0, FRAME + (hb - FRAME) / 2);
+    if (H - FRAME - ht > 0) panel(hw, H - FRAME - ht, 0, ht + (H - FRAME - ht) / 2);
+    marco(hw + 2 * FRAME, ht - hb + 2 * FRAME, 0, (hb + ht) / 2);
+  }
+  // patas de apoyo
+  for (const sx of [-L / 2 + 0.1, L / 2 - 0.1]) {
+    const f = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.7), MATS.frame);
+    f.position.set(sx, 0.04, 0); g.add(f);
+  }
+}
+
 // ---------- Objetos del stage ----------
 function buildProp(obj) {
   const g = new THREE.Group();
@@ -153,18 +225,7 @@ function buildProp(obj) {
   if (t === 'wall' || t === 'lowwall') {
     const L = obj.length ?? 2;
     const H = obj.height ?? (t === 'wall' ? 2.0 : 1.0);
-    const tex = MATS.wall.map.clone();
-    tex.repeat.set(L / 2, H / 2); tex.needsUpdate = true;
-    const m = new THREE.Mesh(new THREE.BoxGeometry(L, H, 0.08), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
-    m.position.y = H / 2;
-    m.castShadow = m.receiveShadow = true;
-    m.userData.hit = { kind: 'hard', wall: true };
-    g.add(m); meshes.push(m);
-    // patas de soporte
-    for (const sx of [-L / 2 + 0.1, L / 2 - 0.1]) {
-      const f = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.7), MATS.frame);
-      f.position.set(sx, 0.04, 0); g.add(f);
-    }
+    buildParapet(g, meshes, obj, L, H, null);
     colliders.push({ kind: 'box', hx: L / 2 + 0.02, hz: 0.06 });
   } else if (t === 'glasswall' || t === 'softcover') {
     const L = obj.length ?? 2;
@@ -198,25 +259,7 @@ function buildProp(obj) {
   } else if (t === 'port') {
     // Panel con puerto: el hueco (centrado) deja pasar la vista y la bala
     const L = obj.length ?? 1, H = obj.height ?? 2;
-    const hw = Math.min(obj.holeW ?? 0.7, L - 0.1), hb = obj.holeElev ?? 1.4, ht = Math.min(hb + (obj.holeH ?? 0.4), H);
-    const side = (L - hw) / 2;
-    const piece = (w, h, x, y) => {
-      if (w <= 0.001 || h <= 0.001) return;
-      const tex = MATS.wall.map.clone(); tex.repeat.set(w / 2, h / 2); tex.needsUpdate = true;
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.08), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
-      m.position.set(x, y, 0);
-      m.castShadow = m.receiveShadow = true;
-      m.userData.hit = { kind: 'hard', wall: true };
-      g.add(m); meshes.push(m);
-    };
-    piece(side, H, -(hw / 2 + side / 2), H / 2);
-    piece(side, H, hw / 2 + side / 2, H / 2);
-    piece(hw, hb, 0, hb / 2);
-    piece(hw, H - ht, 0, ht + (H - ht) / 2);
-    for (const sx of [-L / 2 + 0.1, L / 2 - 0.1]) {
-      const f = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.7), MATS.frame);
-      f.position.set(sx, 0.04, 0); g.add(f);
-    }
+    buildParapet(g, meshes, obj, L, H, { w: obj.holeW ?? 0.7, h: obj.holeH ?? 0.4, elev: obj.holeElev ?? 1.4 });
     colliders.push({ kind: 'box', hx: L / 2 + 0.02, hz: 0.06 });
   } else if (t === 'barrel') {
     const d = obj.diam ?? 0.6, h = obj.height ?? 0.9;

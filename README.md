@@ -33,7 +33,7 @@ El editor **importa y exporta en el mismo formato JSON** que el Stage Designer (
 
 - **Importar JSON** acepta el fichero exportado del designer (uno o varios stages, con o sin tiradas) y los JSON antiguos de Gun Shop. Un stage con el mismo `uuid` sustituye al que ya tenías.
 - **Exportar JSON** genera un fichero que el designer abre con *JSON ▾ › Importar*.
-- Equivalencias: tarjeta (mini, soporte, hard cover, media tarjeta, disparos) → IPSC Target / Mini; no-shoot (mini); popper (85 / 56 cm) → Popper / Mini Popper; metal → placa; muro, muro de metal y corcho → pared (un muro con ≥ 80 % de transparencia → pared transparente); puerto → panel con puerto; línea de falta, zona de tiro, salida, barril, mesa y cono. El tirador sirve de salida si no hay una.
+- Equivalencias: tarjeta (mini, soporte, hard cover, media tarjeta, disparos) → IPSC Target / Mini; no-shoot (mini); popper (85 / 56 cm) → Popper / Mini Popper; metal → placa; muro, muro de metal y corcho → pared con el **color y la transparencia del stage** (marrón, metálico, blanco, salmón, negro, gris; 0–100 %, marco opaco como en el designer; la transparencia es visual, la pared sigue deteniendo la bala); puerto → panel con puerto; línea de falta, zona de tiro, salida, barril, mesa y cono. El tirador sirve de salida si no hay una.
 - Coordenadas: `x` igual, `z = −y`, `rot = −rot`. Lo que solo existe en uno de los dos (grupos, cotas, briefing, tirador… o las placas cuadradas y el hard cover en diagonal de Gun Shop) se conserva para que la ida y vuelta no pierda nada.
 
 ## Controles

@@ -1,6 +1,6 @@
 // Editor de stages: colocar, mover, rotar, borrar y configurar objetos.
 import * as THREE from 'three';
-import { ALL_TYPES, PROP_TYPES } from './stage.js';
+import { ALL_TYPES, PROP_TYPES, PARAPET_VARIANTS, parapetVariant } from './stage.js';
 import { TARGET_TYPES, HARDCOVER, PLATE_SHAPES, PLATE_SIZES, CORTES } from './targets.js';
 import { isDesignerData, importDesigner, exportDesigner } from './designer.js';
 
@@ -17,9 +17,9 @@ const PALETTE = [
 const DEFAULTS = {
   paper: { height: 0.9, shots: 2 }, mini: { height: 1.0, shots: 2 }, noshoot: { height: 0.9 },
   popper: {}, minipopper: {}, plate: { height: 1.0, shape: 'round', size: 0.2 },
-  wall: { length: 2, height: 2 }, lowwall: { length: 2, height: 1 }, faultline: { length: 3 },
+  wall: { length: 2, height: 2, variant: 'muro', color: 'marron', transparency: 50 }, lowwall: { length: 2, height: 1, variant: 'muro', color: 'marron', transparency: 50 }, faultline: { length: 3 },
   glasswall: { length: 2, height: 2, blocks: true }, softcover: { length: 2, height: 2 },
-  port: { length: 1, height: 2, holeW: 0.7, holeH: 0.4, holeElev: 1.4 }, zone: { width: 1, depth: 1 }, table: {}, cone: {},
+  port: { length: 1, height: 2, holeW: 0.7, holeH: 0.4, holeElev: 1.4, color: 'marron', transparency: 50 }, zone: { width: 1, depth: 1 }, table: {}, cone: {},
   barrel: { diam: 0.6, height: 0.9 }, start: {},
 };
 
@@ -245,6 +245,13 @@ export class Editor {
     if (['paper', 'mini', 'noshoot'].includes(o.type)) extra += sel('hardcover', 'Hard cover pintado', hcOpts) + sel('corte', 'Media tarjeta', CORTES) + chk('stand', 'Con soporte (estacas)');
     if (o.type === 'plate') extra += sel('shape', 'Forma', PLATE_SHAPES) + sel('size', 'Tamaño', PLATE_SIZES);
     if (WALLS.includes(o.type) || o.type === 'port') extra += field('length', 'Longitud (m)', 0.1, 0.2, 20) + field('height', 'Altura (m)', 0.1, 0.2, 4);
+    if (['wall', 'lowwall'].includes(o.type)) {
+      const v = parapetVariant(o);
+      extra += sel('variant', 'Material', Object.fromEntries(Object.entries(PARAPET_VARIANTS).map(([k, d]) => [k, d.label])));
+      extra += sel('color', 'Color', PARAPET_VARIANTS[v].colors);
+    }
+    if (o.type === 'port') extra += sel('color', 'Color', PARAPET_VARIANTS.muro.colors);
+    if (['wall', 'lowwall', 'port'].includes(o.type)) extra += field('transparency', 'Transparencia (%)', 10, 0, 100);
     if (o.type === 'port') extra += field('holeW', 'Hueco: ancho (m)', 0.05, 0.1, 5) + field('holeH', 'Hueco: alto (m)', 0.05, 0.1, 3) + field('holeElev', 'Hueco: altura del borde inferior (m)', 0.05, 0, 3);
     if (o.type === 'barrel') extra += field('diam', 'Diámetro (m)', 0.05, 0.2, 2) + field('height', 'Alto (m)', 0.05, 0.2, 3);
     if (o.type === 'zone') extra += field('width', 'Ancho (m)', 0.25, 0.25, 20) + field('depth', 'Fondo (m)', 0.25, 0.25, 20);
@@ -268,6 +275,7 @@ export class Editor {
           o[k] = inp.checked;
         } else if (inp.tagName === 'SELECT') {
           o[k] = isNaN(parseFloat(inp.value)) ? inp.value : parseFloat(inp.value);
+          if (k === 'variant' && !(o.color in PARAPET_VARIANTS[o.variant].colors)) o.color = Object.keys(PARAPET_VARIANTS[o.variant].colors)[0];
         } else {
           const v = parseFloat(inp.value);
           if (!isNaN(v)) o[k] = v;
