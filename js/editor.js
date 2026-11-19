@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { ALL_TYPES, PROP_TYPES, PARAPET_VARIANTS, parapetVariant } from './stage.js';
 import { TARGET_TYPES, HARDCOVER, PLATE_SHAPES, PLATE_SIZES, CORTES } from './targets.js';
 import { isDesignerData, importDesigner, exportDesigner } from './designer.js';
+import { ORIGINS, originOf } from './origin.js';
 
 const $ = id => document.getElementById(id);
 const SNAP = 0.25;
@@ -79,7 +80,7 @@ export class Editor {
     $('ed-desc').addEventListener('input', e => { this.app.stageData.description = e.target.value; });
     $('ed-new').onclick = () => {
       if (!confirm('¿Crear un stage vacío? Los cambios no guardados se perderán.')) return;
-      this.app.loadStage({ id: 'custom-' + Date.now(), name: 'Nuevo stage', description: '', objects: [{ type: 'start', x: 0, z: 0, rot: 0 }] });
+      this.app.loadStage({ id: 'custom-' + Date.now(), name: 'Nuevo stage', description: '', origin: 'custom', objects: [{ type: 'start', x: 0, z: 0, rot: 0 }] });
       this.refresh();
     };
     $('ed-save').onclick = () => { this.app.saveCurrentStage(); this.app.toast('Stage guardado'); this.refreshStageList(); };
@@ -87,7 +88,7 @@ export class Editor {
       const d = this.app.stageData;
       const name = prompt('Nombre del nuevo stage:', d.name + ' (copia)');
       if (!name) return;
-      d.id = 'custom-' + Date.now(); d.name = name;
+      d.id = 'custom-' + Date.now(); d.name = name; d.origin = 'custom'; delete d.uuid;
       this.app.saveCurrentStage();
       this.refresh();
       this.app.toast('Guardado como «' + name + '»');
@@ -122,6 +123,7 @@ export class Editor {
         } else {
           if (!Array.isArray(raw.objects)) throw new Error('El fichero no contiene stages');
           raw.id = 'custom-' + Date.now();
+          raw.origin = 'import';
           raw.name = raw.name || f.name.replace(/\.json$/, '');
           list = [raw];
         }
@@ -197,7 +199,7 @@ export class Editor {
     for (const { s, r, c } of items) {
       if (c !== last) { last = c; grp = document.createElement('optgroup'); grp.label = GROUPS[c]; sel.appendChild(grp); }
       const o = document.createElement('option');
-      o.value = s.id; o.textContent = `${s.name} (${r})`;
+      o.value = s.id; o.textContent = `${ORIGINS[originOf(s)].icon} ${s.name} (${r})`;
       if (s.id === this.app.stageData.id) o.selected = true;
       grp.appendChild(o);
     }

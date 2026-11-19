@@ -266,6 +266,7 @@ function buildStage(kind, seed) {
   const objects = els.map(e => toGunShop(e)).filter(Boolean);
   return {
     id: `gen-${kind}-${seed}`,
+    origin: 'random',
     name,
     description: briefing.descripcion,
     seed, course: kind, shots: total,

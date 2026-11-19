@@ -5,6 +5,7 @@ import { WEAPONS, CATEGORIES, SIGHTS, AMMO, getWeapon, buildWeaponModel } from '
 import { buildRange, Stage, PRESET_STAGES } from './stage.js';
 import { FPS } from './fps.js';
 import { generateStage, COURSES } from './generator.js';
+import { ORIGINS, originOf } from './origin.js';
 import { Editor } from './editor.js';
 import * as Audio from './audio.js';
 
@@ -199,7 +200,13 @@ class App {
     // Agrupados por tipo de stage (regla IPSC 1.2.1): corto, medio, largo; dentro, por disparos y nombre
     const COURSE = [['Cortos', 'hasta 12 disparos'], ['Medios', '13 a 24 disparos'], ['Largos', '25 a 32 disparos'], ['Exceden 32', 'más de 32 disparos']];
     const courseOf = r => (r <= 12 ? 0 : r <= 24 ? 1 : r <= 32 ? 2 : 3);
-    const items = this.stages.map(s => {
+    // filtro por origen (ejemplos, aleatorios, importados, propios)
+    const filt = this.stageFilter || 'all';
+    const count = k => this.stages.filter(s => k === 'all' || originGroup(originOf(s)) === k).length;
+    $('stg-filter').innerHTML = [['all', 'Todos'], ['preset', '★ Ejemplos'], ['random', '🎲 Aleatorios'], ['imported', '⬇ Importados'], ['custom', '✎ Propios']]
+      .map(([k, l]) => `<button data-f="${k}" class="${k === filt ? 'active' : ''}" ${count(k) || k === 'all' ? '' : 'disabled'}>${l} <span>${count(k)}</span></button>`).join('');
+    $('stg-filter').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { this.stageFilter = b.dataset.f; this.renderStages(); });
+    const items = this.stages.filter(s => filt === 'all' || originGroup(originOf(s)) === filt).map(s => {
       const tmp = new Stage(new THREE.Scene()); tmp.data = s;
       const sum = tmp.summary();
       return { s, sum, c: courseOf(sum.rounds) };
@@ -216,12 +223,15 @@ class App {
       const rec = this.records[s.id];
       const card = document.createElement('div');
       card.className = 'card' + (s.id === this.stageData.id ? ' sel' : '');
-      card.innerHTML = `<h3>${esc(s.name)}</h3><p>${esc(s.description || '')}</p>
+      const org = originOf(s);
+      card.dataset.origin = org;
+      card.innerHTML = `<div class="origin o-${org}" title="${ORIGINS[org].title}">${ORIGINS[org].icon} ${ORIGINS[org].label}</div><h3>${esc(s.name)}</h3><p>${esc(s.description || '')}</p>
         <div class="tags"><span>${sum.paper} papel</span><span>${sum.steel} metal</span><span>${sum.ns} NS</span><span>${sum.rounds} rondas mín.</span><span class="course">${['Corto', 'Medio', 'Largo', 'Excede 32'][c]}</span></div>
         ${rec ? `<div class="rec">Mejor HF: <b>${rec.hf.toFixed(4)}</b> (${esc(rec.weapon)})</div>` : ''}`;
       card.onclick = () => { this.loadStage(structuredClone(s)); this.fps.cancelRun(); this.fps.spawn(this.stage.start); this.startPlay(); };
       el.appendChild(card);
     }
+    if (!items.length) el.innerHTML = '<p class="muted">No hay stages de este tipo.</p>';
     document.querySelectorAll('#stages [data-gen]').forEach(b => b.onclick = () => {
       this.generate(b.dataset.gen);
       this.fps.cancelRun();
@@ -496,6 +506,8 @@ class App {
     }
   }
 }
+
+function originGroup(o) { return o === 'designer' || o === 'import' ? 'imported' : o; }
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 

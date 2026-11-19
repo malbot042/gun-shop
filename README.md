@@ -28,6 +28,10 @@ También funciona tal cual en **GitHub Pages** (Settings → Pages → rama `mai
 - **Stage con cronómetro**: Enter → «Are you ready? / Standby» → pitido → el tiempo para en el último disparo. Hoja de puntuación Comstock con Hit Factor y récord por stage.
 - **Editor de stages**: colocar/mover/rotar/duplicar/borrar blancos, paredes, barriles, fault lines y la posición de salida; guardar en el navegador y exportar/importar JSON.
 
+## Listado de stages
+
+Agrupado por tipo (corto, medio, largo) y con el **origen** de cada uno, con su color y un filtro: ★ **Ejemplo** (vienen con Gun Shop), 🎲 **Aleatorio**, ⬇ **Importado** (del Stage Designer o de un JSON) y ✎ **Propio** (creado en el editor; «Guardar como…» convierte cualquiera en propio).
+
 ## Stages aleatorios
 
 En **Jugar un stage** (botones 🎲 Corto / Medio / Largo) o en el editor (**🎲 Generar…**). Plantillas inspiradas en los stages de ejemplo del Stage Designer: *speed shoot* desde una zona, *barricada* con puerto, *bahías* separadas por muros y *avance* hacia el fondo; con tarjetas en pareja, no-shoots solapados, hard cover, poppers y metales.

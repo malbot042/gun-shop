@@ -100,6 +100,7 @@ export function stageFromDesigner(doc) {
   const b = doc.briefing || {};
   return {
     id: 'sd-' + (doc.uuid || uuid()),
+    origin: 'designer',
     uuid: doc.uuid || uuid(),
     name: doc.nombre || 'Stage importado',
     description: [b.descripcion, b.procedimiento].filter(Boolean).join(' · '),
