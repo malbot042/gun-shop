@@ -389,7 +389,7 @@ class App {
       if (this.mode !== 'play') return;
       if (!this.locked) { canvas.requestPointerLock?.()?.catch?.(() => {}); return; }
       if (e.button === 0) this.fps.fire();
-      if (e.button === 2) this.fps.adsHold = true;
+      if (e.button === 2) { this.fps.adsHold = true; this.fps.aimPressed(); }
     });
     addEventListener('mouseup', e => {
       if (this.mode === 'editor') return this.editor.onMouseUp(e);
@@ -427,7 +427,7 @@ class App {
       switch (e.code) {
         case 'Space': this.fps.fire(); break;
         case 'KeyR': this.fps.startReload(); break;
-        case 'KeyZ': this.fps.ads = !this.fps.ads; break;
+        case 'KeyZ': this.fps.ads = !this.fps.ads; if (this.fps.ads) this.fps.aimPressed(); break;
         case 'KeyC': this.fps.crouch = !this.fps.crouch; break;
         case 'KeyV': this.fps.cycleSight(); break;
         case 'KeyX': this.fps.cycleAmmo(); break;

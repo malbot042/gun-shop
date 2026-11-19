@@ -149,6 +149,15 @@ export class FPS {
     this.updateHUD();
   }
 
+  // Apuntar durante la carga cartucho a cartucho (escopeta de tubo): se interrumpe la recarga,
+  // se conservan los cartuchos ya metidos y se puede apuntar y disparar de inmediato.
+  aimPressed() {
+    if (!this.reloading?.tube) return;
+    this.reloading = null;
+    this.app.toast(`Recarga interrumpida: ${this.mag} / ${this.weapon.capacity}`);
+    this.updateHUD();
+  }
+
   // ---------------- Jugador ----------------
   spawn(start) {
     this.pos.set(start.x, 0, start.z);
@@ -200,7 +209,7 @@ export class FPS {
     const w = this.weapon;
     if (this.run.state === 'ready') { this.app.toast('¡Espera al pitido!'); return; }
     if (this.reloading) {
-      if (this.reloading.tube && this.mag > 0) this.reloading = null; // interrumpir carga de cartuchos
+      if (this.reloading.tube && this.mag > 0) { this.reloading = null; this.updateHUD(); } // interrumpir carga de cartuchos
       else return;
     }
     if (this.time - this.lastShot < w.minInterval) return;
