@@ -27,6 +27,14 @@ También funciona tal cual en **GitHub Pages** (Settings → Pages → rama `mai
 - **Stage con cronómetro**: Enter → «Are you ready? / Standby» → pitido → el tiempo para en el último disparo. Hoja de puntuación Comstock con Hit Factor y récord por stage.
 - **Editor de stages**: colocar/mover/rotar/duplicar/borrar blancos, paredes, barriles, fault lines y la posición de salida; guardar en el navegador y exportar/importar JSON.
 
+## Stages aleatorios
+
+En **Jugar un stage** (botones 🎲 Corto / Medio / Largo) o en el editor (**🎲 Generar…**). Plantillas inspiradas en los stages de ejemplo del Stage Designer: *speed shoot* desde una zona, *barricada* con puerto, *bahías* separadas por muros y *avance* hacia el fondo; con tarjetas en pareja, no-shoots solapados, hard cover, poppers y metales.
+
+- Corto 6–12 disparos, medio 13–24, largo 25–32 (regla IPSC 1.2.1); en medio y largo, como mucho 8 disparos por vista.
+- Metal a 7 m o más de las zonas de tiro, nada a menos de 3 m, todos los blancos de cara a su zona y como mucho un 45 % de metal.
+- Cada stage lleva su semilla en el nombre, se guarda en la lista y se exporta al designer con su briefing.
+
 ## Compatibilidad con el Stage Designer de tiropractico.es
 
 El editor **importa y exporta en el mismo formato JSON** que el Stage Designer (`schemaVersion: 1`):

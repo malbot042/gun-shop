@@ -41,7 +41,7 @@
   <!-- Selección de stage -->
   <div id="stages" class="overlay hidden">
     <div class="panel wide">
-      <div class="phead"><h2>Elige un stage</h2><div><button id="stg-reset">Restaurar ejemplos</button> <button data-back>Volver</button></div></div>
+      <div class="phead"><h2>Elige un stage</h2><div><span class="muted">Generar aleatorio:</span> <button class="gen" data-gen="corto">🎲 Corto</button> <button class="gen" data-gen="medio">🎲 Medio</button> <button class="gen" data-gen="largo">🎲 Largo</button> &nbsp; <button id="stg-reset">Restaurar ejemplos</button> <button data-back>Volver</button></div></div>
       <div id="stage-list" class="cards"></div>
     </div>
   </div>
@@ -132,6 +132,7 @@
       <input id="ed-desc" placeholder="Descripción / briefing" class="desc">
       <select id="ed-load" title="Cargar stage"></select>
       <button id="ed-new">Nuevo</button>
+      <select id="ed-gen" title="Generar un stage aleatorio"><option value="">🎲 Generar…</option><option value="corto">Corto (≤ 12)</option><option value="medio">Medio (≤ 24)</option><option value="largo">Largo (≤ 32)</option></select>
       <button id="ed-save" class="primary">Guardar</button>
       <button id="ed-saveas">Guardar como…</button>
       <button id="ed-delete">Borrar</button>

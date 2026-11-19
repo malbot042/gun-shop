@@ -81,9 +81,12 @@ h2 span { color: var(--accent); }
 .card p { margin: 0 0 10px; color: var(--muted); font-size: 13px; min-height: 32px; }
 .tags { display: flex; flex-wrap: wrap; gap: 5px; }
 .tags span { font-size: 11px; background: #2a2f34; padding: 2px 7px; border-radius: 10px; }
+.tags span.course { background: #3a3220; color: var(--accent); }
 .rec { margin-top: 8px; font-size: 12px; color: var(--accent); }
 
 /* Armería */
+button.gen { padding: 6px 10px; }
+#ed-top select#ed-gen { max-width: 130px; }
 .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
 .arm-grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; }
 #arm-list { display: flex; flex-direction: column; gap: 6px; max-height: 62vh; overflow: auto; }

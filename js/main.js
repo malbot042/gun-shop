@@ -4,6 +4,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { WEAPONS, CATEGORIES, SIGHTS, AMMO, getWeapon, buildWeaponModel } from './weapons.js';
 import { buildRange, Stage, PRESET_STAGES } from './stage.js';
 import { FPS } from './fps.js';
+import { generateStage, COURSES } from './generator.js';
 import { Editor } from './editor.js';
 import * as Audio from './audio.js';
 
@@ -127,6 +128,15 @@ class App {
     this.loadStage(structuredClone(this.stages[0]));
   }
 
+  // Stage aleatorio (corto / medio / largo): se guarda en la lista para poder repetirlo o exportarlo
+  generate(kind) {
+    const st = generateStage(kind);
+    this.loadStage(st);
+    this.saveCurrentStage();
+    this.toast(`${COURSES[kind].label}: ${st.shots} disparos · semilla ${st.seed}`);
+    return st;
+  }
+
   saveLoadout() { LS.set('loadout', { id: this.fps.weapon.id, sight: this.fps.sight, ammo: this.fps.ammo }); }
 
   // ---------------- Modos ----------------
@@ -193,11 +203,17 @@ class App {
       const card = document.createElement('div');
       card.className = 'card' + (s.id === this.stageData.id ? ' sel' : '');
       card.innerHTML = `<h3>${esc(s.name)}</h3><p>${esc(s.description || '')}</p>
-        <div class="tags"><span>${sum.paper} papel</span><span>${sum.steel} metal</span><span>${sum.ns} NS</span><span>${sum.rounds} rondas mín.</span></div>
+        <div class="tags"><span>${sum.paper} papel</span><span>${sum.steel} metal</span><span>${sum.ns} NS</span><span>${sum.rounds} rondas mín.</span><span class="course">${sum.rounds <= 12 ? 'Corto' : sum.rounds <= 24 ? 'Medio' : sum.rounds <= 32 ? 'Largo' : 'Excede 32'}</span></div>
         ${rec ? `<div class="rec">Mejor HF: <b>${rec.hf.toFixed(4)}</b> (${esc(rec.weapon)})</div>` : ''}`;
       card.onclick = () => { this.loadStage(structuredClone(s)); this.fps.cancelRun(); this.fps.spawn(this.stage.start); this.startPlay(); };
       el.appendChild(card);
     }
+    document.querySelectorAll('#stages [data-gen]').forEach(b => b.onclick = () => {
+      this.generate(b.dataset.gen);
+      this.fps.cancelRun();
+      this.fps.spawn(this.stage.start);
+      this.startPlay();
+    });
     $('stg-reset').onclick = () => {
       if (!confirm('¿Restaurar los stages de ejemplo? Tus stages propios se conservan.')) return;
       for (const p of PRESET_STAGES) { const i = this.stages.findIndex(s => s.id === p.id); if (i >= 0) this.stages[i] = structuredClone(p); else this.stages.push(structuredClone(p)); }

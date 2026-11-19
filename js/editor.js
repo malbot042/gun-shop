@@ -142,6 +142,13 @@ export class Editor {
       e.target.value = '';
     };
     $('ed-play').onclick = () => this.app.setMode('play');
+    $('ed-gen').onchange = e => {
+      if (!e.target.value) return;
+      this.app.generate(e.target.value);
+      e.target.value = '';
+      this.refresh();
+      this.frameStage();
+    };
     $('ed-exit').onclick = () => this.app.openMenu();
     $('ed-dup').onclick = () => this.duplicate();
     $('ed-del').onclick = () => this.deleteSelected();
