@@ -75,6 +75,9 @@ h2 span { color: var(--accent); }
 .btnrow { display: flex; gap: 8px; margin-top: 14px; }
 
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.course-head { grid-column: 1 / -1; margin: 10px 0 0; font-size: 16px; color: var(--accent); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.course-head:first-child { margin-top: 0; }
+.course-head span { color: var(--muted); font-size: 12px; font-weight: 400; margin-left: 6px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; cursor: pointer; }
 .card:hover, .card.sel { border-color: var(--accent); }
 .card h3 { margin: 0 0 6px; }

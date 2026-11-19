@@ -196,14 +196,28 @@ class App {
   renderStages() {
     const el = $('stage-list');
     el.innerHTML = '';
-    for (const s of this.stages) {
+    // Agrupados por tipo de stage (regla IPSC 1.2.1): corto, medio, largo; dentro, por disparos y nombre
+    const COURSE = [['Cortos', 'hasta 12 disparos'], ['Medios', '13 a 24 disparos'], ['Largos', '25 a 32 disparos'], ['Exceden 32', 'más de 32 disparos']];
+    const courseOf = r => (r <= 12 ? 0 : r <= 24 ? 1 : r <= 32 ? 2 : 3);
+    const items = this.stages.map(s => {
       const tmp = new Stage(new THREE.Scene()); tmp.data = s;
       const sum = tmp.summary();
+      return { s, sum, c: courseOf(sum.rounds) };
+    }).sort((a, b) => a.c - b.c || a.sum.rounds - b.sum.rounds || a.s.name.localeCompare(b.s.name, 'es', { numeric: true }));
+    let last = -1;
+    for (const { s, sum, c } of items) {
+      if (c !== last) {
+        last = c;
+        const h = document.createElement('h3');
+        h.className = 'course-head';
+        h.innerHTML = `${COURSE[c][0]} <span>${COURSE[c][1]} · ${items.filter(i => i.c === c).length}</span>`;
+        el.appendChild(h);
+      }
       const rec = this.records[s.id];
       const card = document.createElement('div');
       card.className = 'card' + (s.id === this.stageData.id ? ' sel' : '');
       card.innerHTML = `<h3>${esc(s.name)}</h3><p>${esc(s.description || '')}</p>
-        <div class="tags"><span>${sum.paper} papel</span><span>${sum.steel} metal</span><span>${sum.ns} NS</span><span>${sum.rounds} rondas mín.</span><span class="course">${sum.rounds <= 12 ? 'Corto' : sum.rounds <= 24 ? 'Medio' : sum.rounds <= 32 ? 'Largo' : 'Excede 32'}</span></div>
+        <div class="tags"><span>${sum.paper} papel</span><span>${sum.steel} metal</span><span>${sum.ns} NS</span><span>${sum.rounds} rondas mín.</span><span class="course">${['Corto', 'Medio', 'Largo', 'Excede 32'][c]}</span></div>
         ${rec ? `<div class="rec">Mejor HF: <b>${rec.hf.toFixed(4)}</b> (${esc(rec.weapon)})</div>` : ''}`;
       card.onclick = () => { this.loadStage(structuredClone(s)); this.fps.cancelRun(); this.fps.spawn(this.stage.start); this.startPlay(); };
       el.appendChild(card);

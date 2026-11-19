@@ -188,11 +188,18 @@ export class Editor {
   refreshStageList() {
     const sel = $('ed-load');
     sel.innerHTML = '';
-    for (const s of this.app.stages) {
+    // agrupados por tipo: corto, medio, largo (como en «Elige un stage»)
+    const GROUPS = ['Cortos (≤ 12)', 'Medios (13–24)', 'Largos (25–32)', 'Exceden 32'];
+    const rounds = s => s.objects.reduce((a, o) => a + (TARGET_TYPES[o.type]?.noshoot ? 0 : TARGET_TYPES[o.type]?.paper ? Math.max(1, Math.round(o.shots || 2)) : TARGET_TYPES[o.type] ? 1 : 0), 0);
+    const items = this.app.stages.map(s => { const r = rounds(s); return { s, r, c: r <= 12 ? 0 : r <= 24 ? 1 : r <= 32 ? 2 : 3 }; })
+      .sort((a, b) => a.c - b.c || a.r - b.r || a.s.name.localeCompare(b.s.name, 'es', { numeric: true }));
+    let grp = null, last = -1;
+    for (const { s, r, c } of items) {
+      if (c !== last) { last = c; grp = document.createElement('optgroup'); grp.label = GROUPS[c]; sel.appendChild(grp); }
       const o = document.createElement('option');
-      o.value = s.id; o.textContent = s.name;
+      o.value = s.id; o.textContent = `${s.name} (${r})`;
       if (s.id === this.app.stageData.id) o.selected = true;
-      sel.appendChild(o);
+      grp.appendChild(o);
     }
     if (!this.app.stages.some(s => s.id === this.app.stageData.id)) {
       const o = document.createElement('option');
