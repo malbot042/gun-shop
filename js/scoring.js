@@ -15,10 +15,11 @@ export function scoreStage(targets, pf, time) {
     }
     if (def.paper) {
       const sorted = [...t.hits].sort((a, b) => pts[b] - pts[a]);
-      const best = sorted.slice(0, 2);
+      const need = Math.max(1, Math.round(t.obj.shots || 2)); // disparos de la tarjeta (2 por defecto)
+      const best = sorted.slice(0, need);
       let p = 0;
       for (const z of best) { r[z]++; p += pts[z]; }
-      const miss = Math.max(0, 2 - best.length);
+      const miss = Math.max(0, need - best.length);
       r.M += miss;
       p -= miss * 10;
       r.rows.push({ n: idx, label: def.short, hits: (best.join(' ') || '') + (miss ? ' ' + 'M'.repeat(miss).split('').join(' ') : ''), pts: p });
@@ -37,7 +38,7 @@ export function isStageComplete(targets) {
   for (const t of targets) {
     const def = TARGET_TYPES[t.type];
     if (def.noshoot) continue;
-    if (def.paper && t.hits.length < 2) return false;
+    if (def.paper && t.hits.length < Math.max(1, Math.round(t.obj.shots || 2))) return false;
     if (def.steel && !t.down) return false;
   }
   return targets.length > 0;

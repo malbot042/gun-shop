@@ -7,7 +7,11 @@ export const PROP_TYPES = {
   lowwall:   { label: 'Pared baja 1 m', length: 2, height: 1.0 },
   glasswall: { label: 'Pared transparente', length: 2, height: 2.0 },
   softcover: { label: 'Soft cover (malla, la bala pasa)', length: 2, height: 2.0 },
+  port:      { label: 'Panel con puerto (ventana)', length: 1, height: 2 },
   barrel:    { label: 'Barril', },
+  table:     { label: 'Mesa', },
+  cone:      { label: 'Cono / marca', },
+  zone:      { label: 'Zona de tiro (shooting box)', },
   faultline: { label: 'Fault line', length: 3 },
   start:     { label: 'Posición de inicio', },
 };
@@ -74,6 +78,9 @@ const MATS = {
   barrel: new THREE.MeshStandardMaterial({ color: 0x1f4f8f, roughness: 0.5, metalness: 0.4 }),
   fault: new THREE.MeshStandardMaterial({ color: 0xc8261e, roughness: 0.8 }),
   start: new THREE.MeshBasicMaterial({ color: 0xf2d230, transparent: true, opacity: 0.9 }),
+  legs: new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.6 }),
+  cone: new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.7 }),
+  zone: new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.8 }),
   sign: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }),
   glass: new THREE.MeshStandardMaterial({ color: 0xcfe8ff, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }),
   glassEdge: new THREE.MeshStandardMaterial({ color: 0x8fb8d8, roughness: 0.2, metalness: 0.3, transparent: true, opacity: 0.5 }),
@@ -188,17 +195,62 @@ function buildProp(obj) {
     const top = new THREE.Mesh(new THREE.BoxGeometry(L, 0.04, 0.05), fm);
     top.position.y = H; g.add(top);
     colliders.push({ kind: 'box', hx: L / 2 + 0.02, hz: 0.06 });
+  } else if (t === 'port') {
+    // Panel con puerto: el hueco (centrado) deja pasar la vista y la bala
+    const L = obj.length ?? 1, H = obj.height ?? 2;
+    const hw = Math.min(obj.holeW ?? 0.7, L - 0.1), hb = obj.holeElev ?? 1.4, ht = Math.min(hb + (obj.holeH ?? 0.4), H);
+    const side = (L - hw) / 2;
+    const piece = (w, h, x, y) => {
+      if (w <= 0.001 || h <= 0.001) return;
+      const tex = MATS.wall.map.clone(); tex.repeat.set(w / 2, h / 2); tex.needsUpdate = true;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.08), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
+      m.position.set(x, y, 0);
+      m.castShadow = m.receiveShadow = true;
+      m.userData.hit = { kind: 'hard', wall: true };
+      g.add(m); meshes.push(m);
+    };
+    piece(side, H, -(hw / 2 + side / 2), H / 2);
+    piece(side, H, hw / 2 + side / 2, H / 2);
+    piece(hw, hb, 0, hb / 2);
+    piece(hw, H - ht, 0, ht + (H - ht) / 2);
+    for (const sx of [-L / 2 + 0.1, L / 2 - 0.1]) {
+      const f = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.7), MATS.frame);
+      f.position.set(sx, 0.04, 0); g.add(f);
+    }
+    colliders.push({ kind: 'box', hx: L / 2 + 0.02, hz: 0.06 });
   } else if (t === 'barrel') {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.88, 24), MATS.barrel);
-    m.position.y = 0.44;
+    const d = obj.diam ?? 0.6, h = obj.height ?? 0.9;
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(d / 2 - 0.01, d / 2 - 0.01, h, 24), MATS.barrel);
+    m.position.y = h / 2;
     m.castShadow = m.receiveShadow = true;
     m.userData.hit = { kind: 'hard' };
     g.add(m); meshes.push(m);
-    for (const y of [0.22, 0.66]) {
-      const r = new THREE.Mesh(new THREE.TorusGeometry(0.295, 0.012, 6, 24), MATS.barrel);
+    for (const y of [h * 0.25, h * 0.75]) {
+      const r = new THREE.Mesh(new THREE.TorusGeometry(d / 2 - 0.005, 0.012, 6, 24), MATS.barrel);
       r.rotation.x = Math.PI / 2; r.position.y = y; g.add(r);
     }
-    colliders.push({ kind: 'circle', r: 0.3 });
+    colliders.push({ kind: 'circle', r: d / 2 });
+  } else if (t === 'table') {
+    const top = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.03, 0.5), MATS.frame);
+    top.position.y = 0.985; top.castShadow = true;
+    top.userData.hit = { kind: 'hard' };
+    g.add(top); meshes.push(top);
+    for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const l = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.97, 0.04), MATS.legs);
+      l.position.set(x * 0.21, 0.485, z * 0.21); g.add(l);
+    }
+    colliders.push({ kind: 'box', hx: 0.25, hz: 0.25 });
+  } else if (t === 'cone') {
+    const c = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.45, 20), MATS.cone);
+    c.position.y = 0.225; c.castShadow = true;
+    c.userData.hit = { kind: 'hard' };
+    g.add(c); meshes.push(c);
+  } else if (t === 'zone') {
+    const w = obj.width ?? 1, d = obj.depth ?? 1;
+    for (const [bw, bd, x, z] of [[w, 0.06, 0, d / 2], [w, 0.06, 0, -d / 2], [0.06, d, -w / 2, 0], [0.06, d, w / 2, 0]]) {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.04, bd), MATS.zone);
+      b.position.set(x, 0.02, z); g.add(b);
+    }
   } else if (t === 'faultline') {
     const L = obj.length ?? 3;
     const m = new THREE.Mesh(new THREE.BoxGeometry(L, 0.04, 0.07), MATS.fault);
@@ -227,7 +279,8 @@ function buildProp(obj) {
     g.add(arrow);
     g.userData.isStart = true;
   }
-  g.position.set(obj.x, 0, obj.z);
+  // elevación (el elemento entero, como en el Stage Designer: p. ej. un muro sobre una base)
+  g.position.set(obj.x, ['faultline', 'start', 'zone'].includes(t) ? 0 : (obj.elev || 0), obj.z);
   g.rotation.y = THREE.MathUtils.degToRad(obj.rot || 0);
   return { group: g, meshes, colliders };
 }
@@ -345,15 +398,15 @@ export class Stage {
 
   // Estadísticas del stage
   summary() {
-    let paper = 0, steel = 0, ns = 0;
+    let paper = 0, steel = 0, ns = 0, shots = 0;
     for (const o of this.data.objects) {
       const d = TARGET_TYPES[o.type];
       if (!d) continue;
       if (d.noshoot) ns++;
-      else if (d.paper) paper++;
-      else steel++;
+      else if (d.paper) { paper++; shots += Math.max(1, Math.round(o.shots || 2)); }
+      else { steel++; shots++; }
     }
-    return { paper, steel, ns, rounds: paper * 2 + steel, maxPoints: (paper * 2 + steel) * 5 };
+    return { paper, steel, ns, rounds: shots, maxPoints: shots * 5 };
   }
 }
 

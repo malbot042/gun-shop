@@ -1,7 +1,8 @@
 // Editor de stages: colocar, mover, rotar, borrar y configurar objetos.
 import * as THREE from 'three';
 import { ALL_TYPES, PROP_TYPES } from './stage.js';
-import { TARGET_TYPES, HARDCOVER, PLATE_SHAPES, PLATE_SIZES } from './targets.js';
+import { TARGET_TYPES, HARDCOVER, PLATE_SHAPES, PLATE_SIZES, CORTES } from './targets.js';
+import { isDesignerData, importDesigner, exportDesigner } from './designer.js';
 
 const $ = id => document.getElementById(id);
 const SNAP = 0.25;
@@ -9,15 +10,17 @@ const SNAP = 0.25;
 const PALETTE = [
   ['Blancos IPSC de cartón', ['paper', 'mini', 'noshoot']],
   ['Blancos IPSC de metal', ['popper', 'minipopper', 'plate']],
-  ['Escenario', ['wall', 'lowwall', 'glasswall', 'softcover', 'barrel', 'faultline', 'start']],
+  ['Escenario', ['wall', 'lowwall', 'glasswall', 'softcover', 'port', 'barrel', 'table', 'cone']],
+  ['Marcas en el suelo', ['start', 'faultline', 'zone']],
 ];
 
 const DEFAULTS = {
-  paper: { height: 0.9 }, mini: { height: 1.0 }, noshoot: { height: 0.9 },
+  paper: { height: 0.9, shots: 2 }, mini: { height: 1.0, shots: 2 }, noshoot: { height: 0.9 },
   popper: {}, minipopper: {}, plate: { height: 1.0, shape: 'round', size: 0.2 },
   wall: { length: 2, height: 2 }, lowwall: { length: 2, height: 1 }, faultline: { length: 3 },
   glasswall: { length: 2, height: 2, blocks: true }, softcover: { length: 2, height: 2 },
-  barrel: {}, start: {},
+  port: { length: 1, height: 2, holeW: 0.7, holeH: 0.4, holeElev: 1.4 }, zone: { width: 1, depth: 1 }, table: {}, cone: {},
+  barrel: { diam: 0.6, height: 0.9 }, start: {},
 };
 
 export class Editor {
@@ -99,7 +102,8 @@ export class Editor {
       if (s) { this.app.loadStage(structuredClone(s)); this.refresh(); this.frameStage(); }
     };
     $('ed-export').onclick = () => {
-      const blob = new Blob([JSON.stringify(this.app.stageData, null, 2)], { type: 'application/json' });
+      // mismo formato que el Stage Designer de tiropractico.es
+      const blob = new Blob([JSON.stringify(exportDesigner([this.app.stageData]), null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = (this.app.stageData.name || 'stage').replace(/[^\w\-]+/g, '_') + '.json';
@@ -111,16 +115,29 @@ export class Editor {
       const f = e.target.files[0];
       if (!f) return;
       try {
-        const data = JSON.parse(await f.text());
-        if (!Array.isArray(data.objects)) throw new Error('JSON sin "objects"');
-        data.objects = data.objects.filter(o => ALL_TYPES[o.type]);
-        data.id = 'custom-' + Date.now();
-        data.name = data.name || f.name.replace(/\.json$/, '');
-        this.app.loadStage(data);
-        this.app.saveCurrentStage();
+        const raw = JSON.parse(await f.text());
+        let list;
+        if (isDesignerData(raw)) {
+          list = importDesigner(raw);
+        } else {
+          if (!Array.isArray(raw.objects)) throw new Error('El fichero no contiene stages');
+          raw.id = 'custom-' + Date.now();
+          raw.name = raw.name || f.name.replace(/\.json$/, '');
+          list = [raw];
+        }
+        if (!list.length) throw new Error('El fichero no contiene stages');
+        for (const st of list) {
+          st.objects = st.objects.filter(o => ALL_TYPES[o.type]);
+          // mismo uuid que uno ya importado: se sustituye
+          const i = st.uuid ? this.app.stages.findIndex(x => x.uuid === st.uuid) : -1;
+          if (i >= 0) st.id = this.app.stages[i].id;
+          this.app.loadStage(st);
+          this.app.saveCurrentStage();
+        }
+        this.app.loadStage(structuredClone(list[0].uuid ? this.app.stages.find(x => x.uuid === list[0].uuid) : list[0]));
         this.refresh();
         this.frameStage();
-        this.app.toast('Stage importado');
+        this.app.toast(list.length > 1 ? `${list.length} stages importados` : `Stage «${list[0].name}» importado`);
       } catch (err) { alert('No se pudo importar: ' + err.message); }
       e.target.value = '';
     };
@@ -223,9 +240,15 @@ export class Editor {
     let extra = '';
     if (['paper', 'mini', 'noshoot', 'plate'].includes(o.type)) extra += field('height', 'Altura (m)', 0.05, 0, 3);
     if (['popper', 'minipopper'].includes(o.type)) extra += field('height', 'Elevación base (m)', 0.05, 0, 2);
-    if (['paper', 'mini', 'noshoot'].includes(o.type)) extra += sel('hardcover', 'Hard cover pintado', hcOpts);
+    if (['paper', 'mini'].includes(o.type)) extra += field('shots', 'Disparos de la tarjeta', 1, 1, 10);
+    if (o.type === 'noshoot') extra += `<label class="chkrow"><input type="checkbox" data-k="mini" ${o.mini ? 'checked' : ''}> No-shoot mini</label>`;
+    if (['paper', 'mini', 'noshoot'].includes(o.type)) extra += sel('hardcover', 'Hard cover pintado', hcOpts) + sel('corte', 'Media tarjeta', CORTES) + chk('stand', 'Con soporte (estacas)');
     if (o.type === 'plate') extra += sel('shape', 'Forma', PLATE_SHAPES) + sel('size', 'Tamaño', PLATE_SIZES);
-    if (WALLS.includes(o.type)) extra += field('length', 'Longitud (m)', 0.1, 0.2, 20) + field('height', 'Altura (m)', 0.1, 0.2, 4);
+    if (WALLS.includes(o.type) || o.type === 'port') extra += field('length', 'Longitud (m)', 0.1, 0.2, 20) + field('height', 'Altura (m)', 0.1, 0.2, 4);
+    if (o.type === 'port') extra += field('holeW', 'Hueco: ancho (m)', 0.05, 0.1, 5) + field('holeH', 'Hueco: alto (m)', 0.05, 0.1, 3) + field('holeElev', 'Hueco: altura del borde inferior (m)', 0.05, 0, 3);
+    if (o.type === 'barrel') extra += field('diam', 'Diámetro (m)', 0.05, 0.2, 2) + field('height', 'Alto (m)', 0.05, 0.2, 3);
+    if (o.type === 'zone') extra += field('width', 'Ancho (m)', 0.25, 0.25, 20) + field('depth', 'Fondo (m)', 0.25, 0.25, 20);
+    if ([...WALLS, 'port', 'barrel', 'table', 'cone'].includes(o.type)) extra += field('elev', 'Elevación (m)', 0.05, 0, 5);
     if (o.type === 'glasswall') extra += chk('blocks', 'Detiene las balas (cobertura dura)');
     if (o.type === 'faultline') extra += field('length', 'Longitud (m)', 0.1, 0.2, 30);
     el.innerHTML = `
@@ -264,7 +287,8 @@ export class Editor {
 
   syncTransform(entry) {
     const o = entry.obj;
-    entry.group.position.set(o.x, 0, o.z);
+    entry.group.position.x = o.x;
+    entry.group.position.z = o.z;
     entry.group.rotation.y = THREE.MathUtils.degToRad(o.rot || 0);
   }
 
@@ -284,6 +308,7 @@ export class Editor {
     const e = this.selected;
     if (!e || e.obj.type === 'start') return;
     const o = { ...e.obj, x: e.obj.x + 1 };
+    if (o._sd) { o._sd = { ...o._sd }; delete o._sd.id; }
     this.app.stageData.objects.push(o);
     const ne = this.app.stage.addEntry(o);
     this.app.refreshShootables();
@@ -404,7 +429,7 @@ export class Editor {
     if (this.selected) {
       const p = this.selected.group.position;
       this.selRing.position.set(p.x, 0.03, p.z);
-      const big = ['wall', 'lowwall', 'glasswall', 'softcover', 'faultline'].includes(this.selected.obj.type) ? (this.selected.obj.length || 2) / 1.1 : 1;
+      const big = ['wall', 'lowwall', 'glasswall', 'softcover', 'port', 'faultline'].includes(this.selected.obj.type) ? (this.selected.obj.length || 2) / 1.1 : 1;
       this.selRing.scale.setScalar(big);
     }
   }

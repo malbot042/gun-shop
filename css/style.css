@@ -142,6 +142,10 @@ td.neg { color: var(--red); }
 .ico-lowwall { background: linear-gradient(transparent 50%, #d8cfbd 50%); }
 .ico-glasswall { background: rgba(160,210,255,0.35); border: 2px solid #8fb8d8; }
 .ico-softcover { background: repeating-linear-gradient(0deg, transparent 0 3px, #2a3a2a 3px 4px), repeating-linear-gradient(90deg, transparent 0 3px, #2a3a2a 3px 4px); }
+.ico-port { background: #d8cfbd; -webkit-mask: radial-gradient(#000 0 0) center/50% 30% no-repeat exclude, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) center/50% 30% no-repeat exclude, linear-gradient(#000 0 0); }
+.ico-table { background: linear-gradient(#b08050 0 25%, transparent 25%), linear-gradient(90deg, transparent 15%, #555 15% 25%, transparent 25% 75%, #555 75% 85%, transparent 85%); }
+.ico-cone { background: #f97316; clip-path: polygon(50% 0, 85% 100%, 15% 100%); }
+.ico-zone { border: 2px solid #22c55e; }
 .ico-barrel { background: #1f4f8f; border-radius: 4px; }
 .ico-faultline { background: linear-gradient(transparent 40%, #c8261e 40%, #c8261e 60%, transparent 60%); }
 .ico-start { border: 2px solid #f2d230; }

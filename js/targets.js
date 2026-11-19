@@ -1,16 +1,19 @@
 // Blancos IPSC: papel (Classic, Mini, No-Shoot) y metal (Popper, Mini Popper, Placa).
 import * as THREE from 'three';
 
-// --- IPSC Target oficial (antes "Classic"): octógono sin cabeza, 45 x 57 cm ---
-// Zona A 15 x 32,5 cm · Zona C 30 x 45 cm · resto D · borde de 0,5 cm no puntuable.
-// Origen: borde inferior central. Unidades: metros.
+// --- IPSC Target oficial (Reglamento IPSC, Apéndice B2): octógono sin cabeza, 45 x 57 cm ---
+// Geometría tomada de las medidas oficiales (mismas que tarjeta-ipsc.svg del Stage Designer de
+// tiropractico.es): zona A 15 x 32,5 cm, zona C 30 x 45 cm, resto D, borde de 0,5 cm no puntuable.
+// Origen: borde inferior central. Unidades: metros. (svg mm → x = (sx-225)/1000, y = (570-sy)/1000)
 const OUTLINE = [
-  [-0.075, 0], [0.075, 0], [0.225, 0.15], [0.225, 0.42], [0.075, 0.57], [-0.075, 0.57], [-0.225, 0.42], [-0.225, 0.15],
+  [-0.075, 0], [0.075, 0], [0.225, 0.19], [0.225, 0.38], [0.075, 0.57], [-0.075, 0.57], [-0.225, 0.38], [-0.225, 0.19],
 ];
 const ZONE_C = [
-  [-0.075, 0.06], [0.075, 0.06], [0.15, 0.135], [0.15, 0.435], [0.075, 0.51], [-0.075, 0.51], [-0.15, 0.435], [-0.15, 0.135],
+  [-0.05, 0.12], [0.05, 0.12], [0.15, 0.235], [0.15, 0.38], [0.075, 0.57], [-0.075, 0.57], [-0.15, 0.38], [-0.15, 0.235],
 ];
-const ZONE_A = [[-0.075, 0.16], [0.075, 0.16], [0.075, 0.485], [-0.075, 0.485]];
+const ZONE_A = [
+  [-0.025, 0.22], [0.025, 0.22], [0.075, 0.295], [0.075, 0.38], [0.025, 0.545], [-0.025, 0.545], [-0.075, 0.38], [-0.075, 0.295],
+];
 const W = 0.45, H = 0.57;
 const EDGE = 0.005; // borde no puntuable
 
@@ -45,13 +48,26 @@ export function paperZone(x, y, scale = 1) {
 // Hard cover pintado (negro) sobre el cartón: la bala no puntúa y se detiene.
 export const HARDCOVER = {
   none:   { label: 'Sin hard cover', poly: null },
-  left:   { label: 'Mitad izquierda', poly: [[-0.3, -0.05], [-0.02, -0.05], [-0.02, 0.85], [-0.3, 0.85]] },
-  right:  { label: 'Mitad derecha', poly: [[0.02, -0.05], [0.3, -0.05], [0.3, 0.85], [0.02, 0.85]] },
-  bottom: { label: 'Mitad inferior', poly: [[-0.3, -0.05], [0.3, -0.05], [0.3, 0.27], [-0.3, 0.27]] },
-  top:    { label: 'Mitad superior', poly: [[-0.3, 0.3], [0.3, 0.3], [0.3, 0.85], [-0.3, 0.85]] },
+  left:   { label: 'Mitad izquierda', poly: [[-0.3, -0.05], [0, -0.05], [0, 0.85], [-0.3, 0.85]] },
+  right:  { label: 'Mitad derecha', poly: [[0, -0.05], [0.3, -0.05], [0.3, 0.85], [0, 0.85]] },
+  bottom: { label: 'Mitad inferior', poly: [[-0.3, -0.05], [0.3, -0.05], [0.3, 0.285], [-0.3, 0.285]] },
+  top:    { label: 'Mitad superior', poly: [[-0.3, 0.285], [0.3, 0.285], [0.3, 0.85], [-0.3, 0.85]] },
   diagL:  { label: 'Diagonal superior izquierda', poly: [[-0.3, 0.85], [0.12, 0.85], [-0.3, 0.12]] },
   diagR:  { label: 'Diagonal superior derecha', poly: [[0.3, 0.85], [-0.12, 0.85], [0.3, 0.12]] },
 };
+
+// Media tarjeta (como «corte» del Stage Designer): la mitad que QUEDA; la otra no existe.
+export const CORTES = {
+  none: 'Tarjeta entera', top: 'Queda la mitad superior', bottom: 'Queda la mitad inferior',
+  left: 'Queda la mitad izquierda', right: 'Queda la mitad derecha',
+};
+function cutAway(corte, x, y) {
+  if (corte === 'top') return y < H / 2;
+  if (corte === 'bottom') return y > H / 2;
+  if (corte === 'left') return x > 0;
+  if (corte === 'right') return x < 0;
+  return false;
+}
 
 export const ZONE_POINTS = {
   major: { A: 5, C: 4, D: 2 },
@@ -60,8 +76,8 @@ export const ZONE_POINTS = {
 
 // --- Texturas ---
 const texCache = {};
-function paperTexture(kind, hc = 'none') {
-  const key = kind + '|' + hc;
+function paperTexture(kind, hc = 'none', corte = 'none') {
+  const key = kind + '|' + hc + '|' + corte;
   if (texCache[key]) return texCache[key];
   const px = 512;
   const cw = px, ch = Math.round(px * H / W);
@@ -89,8 +105,8 @@ function paperTexture(kind, hc = 'none') {
   ctx.font = 'bold 22px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('A', tx(0), ty(0.43));
-  ctx.fillText('C', tx(0.115), ty(0.1));
-  ctx.fillText('D', tx(0.19), ty(0.2));
+  ctx.fillText('C', tx(0.112), ty(0.3));
+  ctx.fillText('D', tx(0.19), ty(0.28));
   ctx.fillText('IPSC', tx(0), ty(0.025));
   if (kind === 'noshoot') {
     ctx.fillStyle = 'rgba(40,40,40,0.35)';
@@ -108,6 +124,11 @@ function paperTexture(kind, hc = 'none') {
     ctx.fillStyle = '#141414';
     path(hcPoly); ctx.fill();
     ctx.restore();
+  }
+  if (corte && corte !== 'none') {
+    // la mitad que no existe se borra (transparente)
+    const half = { top: [0, ch / 2, cw, ch / 2], bottom: [0, 0, cw, ch / 2], left: [cw / 2, 0, cw / 2, ch], right: [0, 0, cw / 2, ch] }[corte];
+    if (half) ctx.clearRect(...half);
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -156,21 +177,26 @@ export function createTarget(obj) {
   const def = TARGET_TYPES[type];
 
   if (def.paper) {
-    const scale = type === 'mini' ? 0.667 : 1;
+    // IPSC Mini Target: 30 x 37,5 cm (Apéndice B3). El no-shoot también puede ser mini.
+    const scale = type === 'mini' || (type === 'noshoot' && obj.mini) ? 2 / 3 : 1;
     const h = obj.height ?? 0.9;
-    // postes
-    const postH = h + 0.15 * scale;
-    const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.025, postH, 0.025), woodMat);
-    p1.position.set(-0.1 * scale, postH / 2, 0.012); p1.castShadow = true;
-    const p2 = p1.clone(); p2.position.x = 0.1 * scale;
-    group.add(p1, p2);
-    const baseM = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.25), woodMat);
-    baseM.position.y = 0.025; baseM.castShadow = true;
-    group.add(baseM);
-    for (const p of [p1, p2, baseM]) { p.userData.hit = { kind: 'hard', soft: true }; state.meshes.push(p); }
+    // estacas (sin soporte: colgada o grapada a un muro)
+    if (obj.stand !== false) {
+      const postH = h + 0.15 * scale;
+      const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.025, postH, 0.025), woodMat);
+      p1.position.set(-0.1 * scale, postH / 2, -0.012); p1.castShadow = true;
+      const p2 = p1.clone(); p2.position.x = 0.1 * scale;
+      group.add(p1, p2);
+      const baseM = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.25), woodMat);
+      baseM.position.set(0, 0.025, -0.02); baseM.castShadow = true;
+      group.add(baseM);
+      for (const p of [p1, p2, baseM]) { p.userData.hit = { kind: 'hard', soft: true }; state.meshes.push(p); }
+    }
 
+    const corte = obj.corte || 'none';
     const paper = new THREE.Mesh(getPaperGeometry(), new THREE.MeshStandardMaterial({
-      map: paperTexture(type === 'noshoot' ? 'noshoot' : 'paper', obj.hardcover || 'none'), side: THREE.DoubleSide, roughness: 0.95,
+      map: paperTexture(type === 'noshoot' ? 'noshoot' : 'paper', obj.hardcover || 'none', corte), side: THREE.DoubleSide, roughness: 0.95,
+      transparent: corte !== 'none', alphaTest: corte !== 'none' ? 0.5 : 0,
     }));
     paper.scale.setScalar(scale);
     paper.position.y = h;
@@ -238,6 +264,7 @@ export function createTarget(obj) {
 // Registra un impacto en papel. worldPoint: punto de impacto. Devuelve la zona.
 export function hitPaper(state, worldPoint, holeSize = 0.0045) {
   const local = state.paper.worldToLocal(worldPoint.clone());
+  if (cutAway(state.obj.corte, local.x, local.y)) return null; // media tarjeta: esa mitad no existe
   let zone = paperZone(local.x, local.y, state.paper.scale.x);
   if (!zone) return null;
   const hcPoly = HARDCOVER[state.obj.hardcover || 'none']?.poly;

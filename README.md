@@ -27,6 +27,15 @@ También funciona tal cual en **GitHub Pages** (Settings → Pages → rama `mai
 - **Stage con cronómetro**: Enter → «Are you ready? / Standby» → pitido → el tiempo para en el último disparo. Hoja de puntuación Comstock con Hit Factor y récord por stage.
 - **Editor de stages**: colocar/mover/rotar/duplicar/borrar blancos, paredes, barriles, fault lines y la posición de salida; guardar en el navegador y exportar/importar JSON.
 
+## Compatibilidad con el Stage Designer de tiropractico.es
+
+El editor **importa y exporta en el mismo formato JSON** que el Stage Designer (`schemaVersion: 1`):
+
+- **Importar JSON** acepta el fichero exportado del designer (uno o varios stages, con o sin tiradas) y los JSON antiguos de Gun Shop. Un stage con el mismo `uuid` sustituye al que ya tenías.
+- **Exportar JSON** genera un fichero que el designer abre con *JSON ▾ › Importar*.
+- Equivalencias: tarjeta (mini, soporte, hard cover, media tarjeta, disparos) → IPSC Target / Mini; no-shoot (mini); popper (85 / 56 cm) → Popper / Mini Popper; metal → placa; muro, muro de metal y corcho → pared (un muro con ≥ 80 % de transparencia → pared transparente); puerto → panel con puerto; línea de falta, zona de tiro, salida, barril, mesa y cono. El tirador sirve de salida si no hay una.
+- Coordenadas: `x` igual, `z = −y`, `rot = −rot`. Lo que solo existe en uno de los dos (grupos, cotas, briefing, tirador… o las placas cuadradas y el hard cover en diagonal de Gun Shop) se conserva para que la ida y vuelta no pierda nada.
+
 ## Controles
 
 | Tirador | |
