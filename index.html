@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gun Shop — IPSC Range</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+</head>
+<body>
+  <div id="game"></div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="crosshair"></div>
+    <div id="scope"><div class="reticle"></div></div>
+    <div id="topbar"><span id="stagename"></span><span id="timer">LIBRE</span></div>
+    <div id="weaponbox"><div id="wname"></div><div id="wsub"></div><div id="ammo"></div></div>
+    <div id="keys">Enter: empezar/terminar stage · T: reiniciar blancos · R: recargar · Z/Clic der.: apuntar · V: mira · B: armería · Tab: editor</div>
+    <div id="runmsg"></div>
+    <div id="hitpop"></div>
+    <div id="hint">Haz clic para capturar el ratón (o juega con flechas + espacio)</div>
+  </div>
+  <div id="toast"></div>
+
+  <!-- Menú principal -->
+  <div id="menu" class="overlay hidden">
+    <div class="panel menu">
+      <h1>GUN SHOP <span>IPSC Range</span></h1>
+      <p id="menu-current" class="muted"></p>
+      <button id="btn-resume" class="primary hidden">Continuar</button>
+      <button id="btn-play" class="primary">Jugar un stage</button>
+      <button id="btn-armory">Armería</button>
+      <button id="btn-editor">Editor de stages</button>
+      <button id="btn-settings">Ajustes</button>
+      <button id="btn-help">Controles y reglas</button>
+    </div>
+  </div>
+
+  <!-- Selección de stage -->
+  <div id="stages" class="overlay hidden">
+    <div class="panel wide">
+      <div class="phead"><h2>Elige un stage</h2><div><button id="stg-reset">Restaurar ejemplos</button> <button data-back>Volver</button></div></div>
+      <div id="stage-list" class="cards"></div>
+    </div>
+  </div>
+
+  <!-- Armería -->
+  <div id="armory" class="overlay hidden">
+    <div class="panel wide armory">
+      <div class="phead"><h2>Armería</h2><div><button id="arm-equip" class="primary">Equipar y jugar</button> <button data-back>Volver</button></div></div>
+      <div id="arm-tabs" class="tabs"></div>
+      <div class="arm-grid">
+        <div id="arm-list"></div>
+        <div class="arm-right">
+          <canvas id="arm-preview"></canvas>
+          <div id="arm-detail"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ajustes -->
+  <div id="settings" class="overlay hidden">
+    <div class="panel">
+      <div class="phead"><h2>Ajustes</h2><button data-back>Volver</button></div>
+      <div id="settings-body" class="settings"></div>
+    </div>
+  </div>
+
+  <!-- Ayuda -->
+  <div id="help" class="overlay hidden">
+    <div class="panel wide">
+      <div class="phead"><h2>Controles y reglas</h2><button data-back>Volver</button></div>
+      <div class="help-grid">
+        <div>
+          <h3>Tirador (FPS)</h3>
+          <table class="keys">
+            <tr><td>Ratón / Flechas</td><td>Apuntar</td></tr>
+            <tr><td>WASD</td><td>Moverse (Mayús: correr)</td></tr>
+            <tr><td>Clic izq. / Espacio</td><td>Disparar</td></tr>
+            <tr><td>Clic der. (mantener) / Z</td><td>Apuntar con la mira</td></tr>
+            <tr><td>R</td><td>Recargar</td></tr>
+            <tr><td>C</td><td>Agacharse</td></tr>
+            <tr><td>V</td><td>Cambiar mira</td></tr>
+            <tr><td>X</td><td>Cambiar munición (escopeta)</td></tr>
+            <tr><td>Enter</td><td>«Make ready» / terminar el stage</td></tr>
+            <tr><td>T</td><td>Reiniciar blancos (práctica)</td></tr>
+            <tr><td>B</td><td>Armería</td></tr>
+            <tr><td>Tab</td><td>Editor de stage</td></tr>
+            <tr><td>Esc</td><td>Menú</td></tr>
+          </table>
+        </div>
+        <div>
+          <h3>Editor</h3>
+          <table class="keys">
+            <tr><td>Paleta + clic</td><td>Colocar objeto (Mayús para varios)</td></tr>
+            <tr><td>Clic / arrastrar</td><td>Seleccionar / mover</td></tr>
+            <tr><td>Q / E</td><td>Rotar 15° (Mayús: 5°)</td></tr>
+            <tr><td>Supr</td><td>Borrar</td></tr>
+            <tr><td>Ctrl+D</td><td>Duplicar</td></tr>
+            <tr><td>WASD / flechas</td><td>Desplazar la vista</td></tr>
+            <tr><td>Clic der. + arrastrar</td><td>Girar la vista</td></tr>
+            <tr><td>Rueda</td><td>Zoom</td></tr>
+            <tr><td>Tab</td><td>Probar el stage</td></tr>
+          </table>
+          <h3>Puntuación (Comstock)</h3>
+          <p>Cuentan los 2 mejores impactos de cada papel. A = 5; C = 4 (Major) / 3 (Minor); D = 2 / 1. Metal abatido = 5. Cada fallo (Mike) y cada impacto en un no-shoot: −10. <b>Hit Factor = puntos ÷ tiempo</b>. El tiempo se para en el último disparo.</p>
+          <p>Las paredes son cobertura dura: detienen la bala. El papel no la detiene.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resultados -->
+  <div id="results" class="overlay hidden">
+    <div class="panel">
+      <div class="phead"><h2>Resultado del stage</h2></div>
+      <div id="res-body"></div>
+      <div class="btnrow"><button id="res-again" class="primary">Repetir (Make ready)</button><button id="res-close">Seguir practicando</button></div>
+    </div>
+  </div>
+
+  <!-- Editor -->
+  <div id="editor-ui" class="hidden">
+    <div id="ed-top">
+      <input id="ed-name" placeholder="Nombre del stage">
+      <input id="ed-desc" placeholder="Descripción / briefing" class="desc">
+      <select id="ed-load" title="Cargar stage"></select>
+      <button id="ed-new">Nuevo</button>
+      <button id="ed-save" class="primary">Guardar</button>
+      <button id="ed-saveas">Guardar como…</button>
+      <button id="ed-delete">Borrar</button>
+      <button id="ed-export">Exportar JSON</button>
+      <button id="ed-import">Importar JSON</button>
+      <input type="file" id="ed-file" accept=".json,application/json" hidden>
+      <button id="ed-play" class="primary">▶ Probar</button>
+      <button id="ed-exit">Menú</button>
+    </div>
+    <div id="palette"></div>
+    <div id="ed-side">
+      <div id="props"></div>
+      <div class="btnrow"><button id="ed-dup">Duplicar</button><button id="ed-del">Borrar</button></div>
+      <label class="chk"><input type="checkbox" id="ed-snap" checked> Ajustar a rejilla (0,25 m)</label>
+      <div id="ed-stats"></div>
+    </div>
+    <div id="ed-hint"></div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
