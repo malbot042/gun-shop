@@ -132,9 +132,9 @@ td.neg { color: var(--red); }
 .pal { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; margin-bottom: 4px; font-size: 13px; padding: 6px 8px; }
 .pal.active { background: #3a3220; }
 .ico { width: 18px; height: 18px; border-radius: 3px; flex: none; }
-.ico-paper { background: #c9a36b; clip-path: polygon(30% 0,70% 0,70% 20%,100% 35%,100% 100%,0 100%,0 35%,30% 20%); }
-.ico-mini { background: #c9a36b; transform: scale(0.7); clip-path: polygon(30% 0,70% 0,70% 20%,100% 35%,100% 100%,0 100%,0 35%,30% 20%); }
-.ico-noshoot { background: #f4f2ec; clip-path: polygon(30% 0,70% 0,70% 20%,100% 35%,100% 100%,0 100%,0 35%,30% 20%); }
+.ico-paper { background: #c9a36b; clip-path: polygon(33% 0,67% 0,100% 26%,100% 74%,67% 100%,33% 100%,0 74%,0 26%); }
+.ico-mini { background: #c9a36b; transform: scale(0.7); clip-path: polygon(33% 0,67% 0,100% 26%,100% 74%,67% 100%,33% 100%,0 74%,0 26%); }
+.ico-noshoot { background: #f4f2ec; clip-path: polygon(33% 0,67% 0,100% 26%,100% 74%,67% 100%,33% 100%,0 74%,0 26%); }
 .ico-popper { background: #e9e4d4; clip-path: polygon(20% 0,80% 0,80% 45%,60% 50%,70% 100%,30% 100%,40% 50%,20% 45%); }
 .ico-minipopper { background: #e9e4d4; transform: scale(0.7); clip-path: polygon(20% 0,80% 0,80% 45%,60% 50%,70% 100%,30% 100%,40% 50%,20% 45%); }
 .ico-plate { background: #e9e4d4; border-radius: 50%; }

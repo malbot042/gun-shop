@@ -1,15 +1,18 @@
 // Blancos IPSC: papel (Classic, Mini, No-Shoot) y metal (Popper, Mini Popper, Placa).
 import * as THREE from 'three';
 
-// --- Geometría del blanco IPSC Classic (metros, origen en el borde inferior central) ---
+// --- IPSC Target oficial (antes "Classic"): octógono sin cabeza, 45 x 57 cm ---
+// Zona A 15 x 32,5 cm · Zona C 30 x 45 cm · resto D · borde de 0,5 cm no puntuable.
+// Origen: borde inferior central. Unidades: metros.
 const OUTLINE = [
-  [-0.15, 0], [0.15, 0], [0.23, 0.08], [0.23, 0.48], [0.13, 0.58], [0.075, 0.58], [0.075, 0.74],
-  [0.055, 0.76], [-0.055, 0.76], [-0.075, 0.74], [-0.075, 0.58], [-0.13, 0.58], [-0.23, 0.48], [-0.23, 0.08],
+  [-0.075, 0], [0.075, 0], [0.225, 0.15], [0.225, 0.42], [0.075, 0.57], [-0.075, 0.57], [-0.225, 0.42], [-0.225, 0.15],
 ];
-const ZONE_A_BODY = [[-0.075, 0.2], [0.075, 0.2], [0.075, 0.48], [-0.075, 0.48]];
-const ZONE_C_BODY = [[-0.1, 0.1], [0.1, 0.1], [0.15, 0.15], [0.15, 0.505], [0.1, 0.555], [-0.1, 0.555], [-0.15, 0.505], [-0.15, 0.15]];
-const ZONE_A_HEAD = [[-0.045, 0.6], [0.045, 0.6], [0.045, 0.66], [-0.045, 0.66]];
-const W = 0.46, H = 0.76;
+const ZONE_C = [
+  [-0.075, 0.06], [0.075, 0.06], [0.15, 0.135], [0.15, 0.435], [0.075, 0.51], [-0.075, 0.51], [-0.15, 0.435], [-0.15, 0.135],
+];
+const ZONE_A = [[-0.075, 0.16], [0.075, 0.16], [0.075, 0.485], [-0.075, 0.485]];
+const W = 0.45, H = 0.57;
+const EDGE = 0.005; // borde no puntuable
 
 function pointInPoly(x, y, poly) {
   let inside = false;
@@ -19,13 +22,23 @@ function pointInPoly(x, y, poly) {
   }
   return inside;
 }
+function distToEdge(x, y, poly) {
+  let d = Infinity;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [ax, ay] = poly[j], [bx, by] = poly[i];
+    const dx = bx - ax, dy = by - ay;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
+    d = Math.min(d, Math.hypot(x - ax - t * dx, y - ay - t * dy));
+  }
+  return d;
+}
 
 // Devuelve 'A' | 'C' | 'D' | null para un punto en coordenadas locales (sin escalar)
-export function paperZone(x, y) {
+export function paperZone(x, y, scale = 1) {
   if (!pointInPoly(x, y, OUTLINE)) return null;
-  if (pointInPoly(x, y, ZONE_A_BODY) || pointInPoly(x, y, ZONE_A_HEAD)) return 'A';
-  if (y > 0.58) return 'C'; // zona B de la cabeza puntúa como C
-  if (pointInPoly(x, y, ZONE_C_BODY)) return 'C';
+  if (distToEdge(x, y, OUTLINE) < EDGE / scale) return null; // borde no puntuable
+  if (pointInPoly(x, y, ZONE_A)) return 'A';
+  if (pointInPoly(x, y, ZONE_C)) return 'C';
   return 'D';
 }
 
@@ -34,8 +47,8 @@ export const HARDCOVER = {
   none:   { label: 'Sin hard cover', poly: null },
   left:   { label: 'Mitad izquierda', poly: [[-0.3, -0.05], [-0.02, -0.05], [-0.02, 0.85], [-0.3, 0.85]] },
   right:  { label: 'Mitad derecha', poly: [[0.02, -0.05], [0.3, -0.05], [0.3, 0.85], [0.02, 0.85]] },
-  bottom: { label: 'Mitad inferior', poly: [[-0.3, -0.05], [0.3, -0.05], [0.3, 0.32], [-0.3, 0.32]] },
-  top:    { label: 'Mitad superior (cabeza y hombros)', poly: [[-0.3, 0.42], [0.3, 0.42], [0.3, 0.85], [-0.3, 0.85]] },
+  bottom: { label: 'Mitad inferior', poly: [[-0.3, -0.05], [0.3, -0.05], [0.3, 0.27], [-0.3, 0.27]] },
+  top:    { label: 'Mitad superior', poly: [[-0.3, 0.3], [0.3, 0.3], [0.3, 0.85], [-0.3, 0.85]] },
   diagL:  { label: 'Diagonal superior izquierda', poly: [[-0.3, 0.85], [0.12, 0.85], [-0.3, 0.12]] },
   diagR:  { label: 'Diagonal superior derecha', poly: [[0.3, 0.85], [-0.12, 0.85], [0.3, 0.12]] },
 };
@@ -69,23 +82,21 @@ function paperTexture(kind, hc = 'none') {
   ctx.strokeStyle = kind === 'noshoot' ? 'rgba(80,80,80,0.55)' : 'rgba(70,45,15,0.55)';
   ctx.lineWidth = 2.5;
   ctx.setLineDash([7, 5]);
-  path(ZONE_C_BODY); ctx.stroke();
-  path(ZONE_A_BODY); ctx.stroke();
-  path(ZONE_A_HEAD); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(tx(-0.075), ty(0.58)); ctx.lineTo(tx(0.075), ty(0.58)); ctx.stroke();
+  path(ZONE_C); ctx.stroke();
+  path(ZONE_A); ctx.stroke();
   ctx.setLineDash([]);
   ctx.fillStyle = kind === 'noshoot' ? 'rgba(60,60,60,0.5)' : 'rgba(70,45,15,0.6)';
   ctx.font = 'bold 22px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('A', tx(0), ty(0.33));
-  ctx.fillText('C', tx(0.115), ty(0.14));
-  ctx.fillText('D', tx(0.195), ty(0.1));
-  ctx.fillText('B', tx(0), ty(0.69));
+  ctx.fillText('A', tx(0), ty(0.43));
+  ctx.fillText('C', tx(0.115), ty(0.1));
+  ctx.fillText('D', tx(0.19), ty(0.2));
+  ctx.fillText('IPSC', tx(0), ty(0.025));
   if (kind === 'noshoot') {
     ctx.fillStyle = 'rgba(40,40,40,0.35)';
     ctx.font = 'bold 34px sans-serif';
-    ctx.fillText('NO', tx(0), ty(0.44));
-    ctx.fillText('SHOOT', tx(0), ty(0.39));
+    ctx.fillText('NO', tx(0), ty(0.33));
+    ctx.fillText('SHOOT', tx(0), ty(0.28));
   }
   ctx.lineWidth = 3;
   ctx.strokeStyle = kind === 'noshoot' ? '#999' : '#7a5a2c';
@@ -227,7 +238,7 @@ export function createTarget(obj) {
 // Registra un impacto en papel. worldPoint: punto de impacto. Devuelve la zona.
 export function hitPaper(state, worldPoint, holeSize = 0.0045) {
   const local = state.paper.worldToLocal(worldPoint.clone());
-  let zone = paperZone(local.x, local.y);
+  let zone = paperZone(local.x, local.y, state.paper.scale.x);
   if (!zone) return null;
   const hcPoly = HARDCOVER[state.obj.hardcover || 'none']?.poly;
   if (hcPoly && pointInPoly(local.x, local.y, hcPoly)) zone = 'HC';
