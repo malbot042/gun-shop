@@ -1,21 +1,22 @@
 // Editor de stages: colocar, mover, rotar, borrar y configurar objetos.
 import * as THREE from 'three';
 import { ALL_TYPES, PROP_TYPES } from './stage.js';
-import { TARGET_TYPES } from './targets.js';
+import { TARGET_TYPES, HARDCOVER, PLATE_SHAPES, PLATE_SIZES } from './targets.js';
 
 const $ = id => document.getElementById(id);
 const SNAP = 0.25;
 
 const PALETTE = [
-  ['Blancos de papel', ['paper', 'mini', 'noshoot']],
-  ['Metal', ['popper', 'minipopper', 'plate']],
-  ['Escenario', ['wall', 'lowwall', 'barrel', 'faultline', 'start']],
+  ['Blancos IPSC de cartón', ['paper', 'mini', 'noshoot']],
+  ['Blancos IPSC de metal', ['popper', 'minipopper', 'plate']],
+  ['Escenario', ['wall', 'lowwall', 'glasswall', 'softcover', 'barrel', 'faultline', 'start']],
 ];
 
 const DEFAULTS = {
   paper: { height: 0.9 }, mini: { height: 1.0 }, noshoot: { height: 0.9 },
-  popper: {}, minipopper: {}, plate: { height: 1.0 },
+  popper: {}, minipopper: {}, plate: { height: 1.0, shape: 'round', size: 0.2 },
   wall: { length: 2, height: 2 }, lowwall: { length: 2, height: 1 }, faultline: { length: 3 },
+  glasswall: { length: 2, height: 2, blocks: true }, softcover: { length: 2, height: 2 },
   barrel: {}, start: {},
 };
 
@@ -213,12 +214,19 @@ export class Editor {
     const dist = Math.hypot(o.x - start.x, o.z - start.z);
     const field = (key, label, step, min, max) => `<label>${label}<input type="number" data-k="${key}" step="${step}" ${min != null ? `min="${min}"` : ''} ${max != null ? `max="${max}"` : ''} value="${+(o[key] ?? DEFAULTS[o.type][key] ?? 0).toFixed(2)}"></label>`;
     let typeSel = '';
-    const fam = TARGET_TYPES[o.type] ? (TARGET_TYPES[o.type].paper ? ['paper', 'mini', 'noshoot'] : ['popper', 'minipopper', 'plate']) : (o.type === 'wall' || o.type === 'lowwall' ? ['wall', 'lowwall'] : null);
+    const WALLS = ['wall', 'lowwall', 'glasswall', 'softcover'];
+    const fam = TARGET_TYPES[o.type] ? (TARGET_TYPES[o.type].paper ? ['paper', 'mini', 'noshoot'] : ['popper', 'minipopper', 'plate']) : (WALLS.includes(o.type) ? WALLS : null);
+    const sel = (key, label, opts) => `<label>${label}<select data-k="${key}">${Object.entries(opts).map(([v, t]) => `<option value="${v}" ${String(o[key] ?? DEFAULTS[o.type][key]) === String(v) ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`;
+    const chk = (key, label) => `<label class="chkrow"><input type="checkbox" data-k="${key}" ${(o[key] ?? DEFAULTS[o.type][key]) !== false ? 'checked' : ''}> ${label}</label>`;
+    const hcOpts = Object.fromEntries(Object.entries(HARDCOVER).map(([k, v]) => [k, v.label]));
     if (fam) typeSel = `<label>Tipo<select data-k="type">${fam.map(t => `<option value="${t}" ${t === o.type ? 'selected' : ''}>${ALL_TYPES[t].label}</option>`).join('')}</select></label>`;
     let extra = '';
     if (['paper', 'mini', 'noshoot', 'plate'].includes(o.type)) extra += field('height', 'Altura (m)', 0.05, 0, 3);
     if (['popper', 'minipopper'].includes(o.type)) extra += field('height', 'Elevación base (m)', 0.05, 0, 2);
-    if (['wall', 'lowwall'].includes(o.type)) extra += field('length', 'Longitud (m)', 0.1, 0.2, 20) + field('height', 'Altura (m)', 0.1, 0.2, 4);
+    if (['paper', 'mini', 'noshoot'].includes(o.type)) extra += sel('hardcover', 'Hard cover pintado', hcOpts);
+    if (o.type === 'plate') extra += sel('shape', 'Forma', PLATE_SHAPES) + sel('size', 'Tamaño', PLATE_SIZES);
+    if (WALLS.includes(o.type)) extra += field('length', 'Longitud (m)', 0.1, 0.2, 20) + field('height', 'Altura (m)', 0.1, 0.2, 4);
+    if (o.type === 'glasswall') extra += chk('blocks', 'Detiene las balas (cobertura dura)');
     if (o.type === 'faultline') extra += field('length', 'Longitud (m)', 0.1, 0.2, 30);
     el.innerHTML = `
       <h4>${ALL_TYPES[o.type].label}</h4>
@@ -233,6 +241,10 @@ export class Editor {
         if (k === 'type') {
           o.type = inp.value;
           Object.assign(o, { ...DEFAULTS[o.type], ...pick(o, ['x', 'z', 'rot', 'type']) });
+        } else if (inp.type === 'checkbox') {
+          o[k] = inp.checked;
+        } else if (inp.tagName === 'SELECT') {
+          o[k] = isNaN(parseFloat(inp.value)) ? inp.value : parseFloat(inp.value);
         } else {
           const v = parseFloat(inp.value);
           if (!isNaN(v)) o[k] = v;
@@ -392,7 +404,7 @@ export class Editor {
     if (this.selected) {
       const p = this.selected.group.position;
       this.selRing.position.set(p.x, 0.03, p.z);
-      const big = ['wall', 'lowwall', 'faultline'].includes(this.selected.obj.type) ? (this.selected.obj.length || 2) / 1.1 : 1;
+      const big = ['wall', 'lowwall', 'glasswall', 'softcover', 'faultline'].includes(this.selected.obj.type) ? (this.selected.obj.length || 2) / 1.1 : 1;
       this.selRing.scale.setScalar(big);
     }
   }

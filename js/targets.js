@@ -29,6 +29,17 @@ export function paperZone(x, y) {
   return 'D';
 }
 
+// Hard cover pintado (negro) sobre el cartón: la bala no puntúa y se detiene.
+export const HARDCOVER = {
+  none:   { label: 'Sin hard cover', poly: null },
+  left:   { label: 'Mitad izquierda', poly: [[-0.3, -0.05], [-0.02, -0.05], [-0.02, 0.85], [-0.3, 0.85]] },
+  right:  { label: 'Mitad derecha', poly: [[0.02, -0.05], [0.3, -0.05], [0.3, 0.85], [0.02, 0.85]] },
+  bottom: { label: 'Mitad inferior', poly: [[-0.3, -0.05], [0.3, -0.05], [0.3, 0.32], [-0.3, 0.32]] },
+  top:    { label: 'Mitad superior (cabeza y hombros)', poly: [[-0.3, 0.42], [0.3, 0.42], [0.3, 0.85], [-0.3, 0.85]] },
+  diagL:  { label: 'Diagonal superior izquierda', poly: [[-0.3, 0.85], [0.12, 0.85], [-0.3, 0.12]] },
+  diagR:  { label: 'Diagonal superior derecha', poly: [[0.3, 0.85], [-0.12, 0.85], [0.3, 0.12]] },
+};
+
 export const ZONE_POINTS = {
   major: { A: 5, C: 4, D: 2 },
   minor: { A: 5, C: 3, D: 1 },
@@ -36,8 +47,9 @@ export const ZONE_POINTS = {
 
 // --- Texturas ---
 const texCache = {};
-function paperTexture(kind) {
-  if (texCache[kind]) return texCache[kind];
+function paperTexture(kind, hc = 'none') {
+  const key = kind + '|' + hc;
+  if (texCache[key]) return texCache[key];
   const px = 512;
   const cw = px, ch = Math.round(px * H / W);
   const c = document.createElement('canvas');
@@ -78,10 +90,18 @@ function paperTexture(kind) {
   ctx.lineWidth = 3;
   ctx.strokeStyle = kind === 'noshoot' ? '#999' : '#7a5a2c';
   path(OUTLINE); ctx.stroke();
+  const hcPoly = HARDCOVER[hc]?.poly;
+  if (hcPoly) {
+    ctx.save();
+    path(OUTLINE); ctx.clip();
+    ctx.fillStyle = '#141414';
+    path(hcPoly); ctx.fill();
+    ctx.restore();
+  }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
-  texCache[kind] = t;
+  t.anisotropy = 8;
+  texCache[key] = t;
   return t;
 }
 
@@ -105,14 +125,17 @@ function holeMat(color) {
   return holeMatCache[color];
 }
 
+// Solo blancos oficiales IPSC (Reglamento IPSC, apéndices B y C)
 export const TARGET_TYPES = {
-  paper:      { label: 'IPSC Classic (papel)', paper: true },
-  mini:       { label: 'IPSC Mini (papel)', paper: true },
-  noshoot:    { label: 'No-Shoot', paper: true, noshoot: true },
-  popper:     { label: 'Popper IPSC (metal)', steel: true },
-  minipopper: { label: 'Mini Popper (metal)', steel: true },
-  plate:      { label: 'Placa redonda 20 cm (metal)', steel: true },
+  paper:      { label: 'IPSC Target (cartón)', short: 'IPSC Target', paper: true },
+  mini:       { label: 'IPSC Mini Target (cartón)', short: 'IPSC Mini', paper: true },
+  noshoot:    { label: 'IPSC No-Shoot', short: 'No-Shoot', paper: true, noshoot: true },
+  popper:     { label: 'IPSC Popper (metal)', short: 'IPSC Popper', steel: true },
+  minipopper: { label: 'IPSC Mini Popper (metal)', short: 'Mini Popper', steel: true },
+  plate:      { label: 'IPSC Metal Plate (placa)', short: 'Placa', steel: true },
 };
+export const PLATE_SHAPES = { round: 'Redonda', square: 'Cuadrada' };
+export const PLATE_SIZES = { 0.15: '15 cm', 0.2: '20 cm', 0.3: '30 cm' };
 
 // Crea un blanco. Devuelve { group, state } donde state guarda impactos y estado.
 export function createTarget(obj) {
@@ -136,7 +159,7 @@ export function createTarget(obj) {
     for (const p of [p1, p2, baseM]) { p.userData.hit = { kind: 'hard', soft: true }; state.meshes.push(p); }
 
     const paper = new THREE.Mesh(getPaperGeometry(), new THREE.MeshStandardMaterial({
-      map: paperTexture(type === 'noshoot' ? 'noshoot' : 'paper'), side: THREE.DoubleSide, roughness: 0.95,
+      map: paperTexture(type === 'noshoot' ? 'noshoot' : 'paper', obj.hardcover || 'none'), side: THREE.DoubleSide, roughness: 0.95,
     }));
     paper.scale.setScalar(scale);
     paper.position.y = h;
@@ -154,15 +177,21 @@ export function createTarget(obj) {
     let face;
     if (type === 'plate') {
       const h = obj.height ?? 1.0;
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.04, h, 0.04), steelDark);
-      post.position.set(0, h / 2, 0.06); post.castShadow = true;
+      const ph = Math.max(0.1, h - +(obj.size || 0.2) / 2);
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.04, ph, 0.04), steelDark);
+      post.position.set(0, ph / 2, -0.04); post.castShadow = true;
       post.userData.hit = { kind: 'hard' };
       group.add(post);
       state.meshes.push(post);
-      pivot.position.set(0, h - 0.1, 0);
-      face = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.012, 28), steelPaint);
-      face.rotation.x = Math.PI / 2;
-      face.position.y = 0.1;
+      const size = +(obj.size || 0.2);
+      pivot.position.set(0, ph, 0);
+      if (obj.shape === 'square') {
+        face = new THREE.Mesh(new THREE.BoxGeometry(size, size, 0.012), steelPaint);
+      } else {
+        face = new THREE.Mesh(new THREE.CylinderGeometry(size / 2, size / 2, 0.012, 32), steelPaint);
+        face.rotation.x = Math.PI / 2;
+      }
+      face.position.y = size / 2;
     } else {
       const s = type === 'minipopper' ? 0.6 : 1;
       const shape = new THREE.Shape();
@@ -198,9 +227,11 @@ export function createTarget(obj) {
 // Registra un impacto en papel. worldPoint: punto de impacto. Devuelve la zona.
 export function hitPaper(state, worldPoint, holeSize = 0.0045) {
   const local = state.paper.worldToLocal(worldPoint.clone());
-  const zone = paperZone(local.x, local.y);
+  let zone = paperZone(local.x, local.y);
   if (!zone) return null;
-  state.hits.push(zone);
+  const hcPoly = HARDCOVER[state.obj.hardcover || 'none']?.poly;
+  if (hcPoly && pointInPoly(local.x, local.y, hcPoly)) zone = 'HC';
+  else state.hits.push(zone);
   const s = state.paper.scale.x;
   for (const side of [1, -1]) {
     const hole = new THREE.Mesh(new THREE.CircleGeometry(holeSize / s, 10), holeMat(side > 0 ? 0x1a120a : 0x3a2a18));

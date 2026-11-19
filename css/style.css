@@ -38,15 +38,9 @@ input, select, textarea {
 #scope { position: absolute; inset: 0; display: none;
   background: radial-gradient(circle at center, transparent 0, transparent calc(min(42vh, 42vw) - 2px), #000 calc(min(42vh, 42vw) + 6px)); }
 #scope.on { display: block; }
-#scope .reticle { position: absolute; left: 50%; top: 50%; width: min(84vh, 84vw); height: min(84vh, 84vw); transform: translate(-50%, -50%); border-radius: 50%;
-  background:
-    linear-gradient(#000, #000) center / 100% 2px no-repeat,
-    linear-gradient(#000, #000) center / 2px 100% no-repeat;
-  -webkit-mask: radial-gradient(circle at center, transparent 0 6px, #000 7px);
-          mask: radial-gradient(circle at center, transparent 0 6px, #000 7px);
-}
-#scope::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: #e02020; box-shadow: 0 0 4px #f33; }
-
+#scope .reticle { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); line-height: 0; }
+#scope .reticle svg { display: block; }
+#rangefinder { position: absolute; left: 50%; top: calc(50% + min(42vh, 42vw) - 34px); transform: translateX(-50%); font: 13px Consolas, monospace; color: #ff6a50; text-shadow: 0 0 3px #000; white-space: pre; }
 #topbar { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 16px; align-items: center;
   background: rgba(0,0,0,0.55); padding: 6px 16px; border-radius: 8px; font-size: 15px; }
 #timer { font-family: "JetBrains Mono", Consolas, monospace; font-size: 26px; color: var(--accent); min-width: 110px; text-align: right; }
@@ -62,7 +56,7 @@ input, select, textarea {
 #hitpop { position: absolute; left: 50%; top: calc(50% + 40px); transform: translateX(-50%); font-weight: 800; font-size: 22px; opacity: 0; white-space: nowrap; text-shadow: 0 1px 4px #000; }
 #hitpop.on { animation: pop 0.9s ease-out; }
 @keyframes pop { 0% { opacity: 1; transform: translate(-50%, 0) scale(1.3); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -18px) scale(1); } }
-.zA { color: var(--green); } .zC { color: var(--accent); } .zD { color: #ff8c3a; } .zN { color: var(--red); } .zS { color: var(--accent2); } .zM { color: var(--red); }
+.zH { color: #888; } .zA { color: var(--green); } .zC { color: var(--accent); } .zD { color: #ff8c3a; } .zN { color: var(--red); } .zS { color: var(--accent2); } .zM { color: var(--red); }
 #hint { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); padding: 6px 14px; border-radius: 6px; font-size: 14px; }
 #toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); padding: 8px 18px; border-radius: 6px; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 50; }
 #toast.on { opacity: 1; }
@@ -146,6 +140,8 @@ td.neg { color: var(--red); }
 .ico-plate { background: #e9e4d4; border-radius: 50%; }
 .ico-wall { background: #d8cfbd; }
 .ico-lowwall { background: linear-gradient(transparent 50%, #d8cfbd 50%); }
+.ico-glasswall { background: rgba(160,210,255,0.35); border: 2px solid #8fb8d8; }
+.ico-softcover { background: repeating-linear-gradient(0deg, transparent 0 3px, #2a3a2a 3px 4px), repeating-linear-gradient(90deg, transparent 0 3px, #2a3a2a 3px 4px); }
 .ico-barrel { background: #1f4f8f; border-radius: 4px; }
 .ico-faultline { background: linear-gradient(transparent 40%, #c8261e 40%, #c8261e 60%, transparent 60%); }
 .ico-start { border: 2px solid #f2d230; }
@@ -153,6 +149,8 @@ td.neg { color: var(--red); }
 #props h4 { margin: 0 0 8px; color: var(--accent); }
 #props label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
 #props input, #props select { width: 100%; }
+#props label.chkrow { flex-direction: row; align-items: center; color: var(--text); }
+#props label.chkrow input { width: auto; }
 #props .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 #ed-side .chk { font-size: 13px; margin-top: 10px; }
 #ed-stats { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px; font-size: 12px; }

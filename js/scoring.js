@@ -21,10 +21,10 @@ export function scoreStage(targets, pf, time) {
       const miss = Math.max(0, 2 - best.length);
       r.M += miss;
       p -= miss * 10;
-      r.rows.push({ n: idx, label: def.label.replace(' (papel)', ''), hits: (best.join(' ') || '') + (miss ? ' ' + 'M'.repeat(miss).split('').join(' ') : ''), pts: p });
+      r.rows.push({ n: idx, label: def.short, hits: (best.join(' ') || '') + (miss ? ' ' + 'M'.repeat(miss).split('').join(' ') : ''), pts: p });
     } else {
-      if (t.down) { r.steel++; r.rows.push({ n: idx, label: def.label.replace(' (metal)', ''), hits: 'Abatido', pts: 5 }); }
-      else { r.M++; r.steelMiss++; r.rows.push({ n: idx, label: def.label.replace(' (metal)', ''), hits: 'M', pts: -10 }); }
+      if (t.down) { r.steel++; r.rows.push({ n: idx, label: def.short, hits: 'Abatido', pts: 5 }); }
+      else { r.M++; r.steelMiss++; r.rows.push({ n: idx, label: def.short, hits: 'M', pts: -10 }); }
     }
   }
   r.points = r.A * 5 + r.C * pts.C + r.D * pts.D + r.steel * 5 - r.M * 10 - r.NS * 10;

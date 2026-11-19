@@ -23,6 +23,41 @@ const DUST_TEX = makeSpriteTex('rgba(200,180,140,0.9)', 'rgba(200,180,140,0)');
 const SPARK_TEX = makeSpriteTex('rgba(255,240,180,1)', 'rgba(255,140,20,0)');
 const FLASH_TEX = makeSpriteTex('rgba(255,250,210,1)', 'rgba(255,150,30,0)');
 
+function buildReticleSVG(type, R, ppm) {
+  const D = R * 2, c = R;
+  const lines = [];
+  const L = (x1, y1, x2, y2, w = 1) => lines.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#000" stroke-width="${w}"/>`);
+  if (type === 'dot') {
+    const r = Math.max(2, 0.29 * ppm);
+    return `<svg width="${D}" height="${D}"><circle cx="${c}" cy="${c}" r="${r * 2.2}" fill="rgba(255,40,20,0.25)"/><circle cx="${c}" cy="${c}" r="${r}" fill="#ff2a1a"/></svg>`;
+  }
+  // postes gruesos exteriores + cruz fina
+  const inner = type === 'lpvo' ? 3.2 * ppm + 6 : 0.62 * R;
+  L(0, c, c - inner, c, 4); L(c + inner, c, D, c, 4); L(c, c + inner, c, D, 4); L(c, 0, c, c - inner, 4);
+  L(c - inner, c, c + inner, c, 1.2); L(c, c - inner, c, c + inner, 1.2);
+  let extra = '';
+  if (type === 'mil') {
+    // marcas cada 1 mrad (largas cada 5), solo si caben
+    const step = ppm >= 4 ? 1 : ppm >= 1.2 ? 5 : 10;
+    for (let m = step; m * ppm < inner; m += step) {
+      const big = m % 5 === 0;
+      const t = big ? 7 : 4;
+      for (const s of [-1, 1]) {
+        L(c + s * m * ppm, c - t, c + s * m * ppm, c + t, 1);
+        L(c - t, c + s * m * ppm, c + t, c + s * m * ppm, 1);
+      }
+      if (big) extra += `<text x="${c + m * ppm}" y="${c - 10}" font-size="10" text-anchor="middle" fill="#000" font-family="monospace">${m}</text>`;
+    }
+    extra += `<circle cx="${c}" cy="${c}" r="2" fill="#ff2a1a"/>`;
+  } else {
+    // LPVO: herradura iluminada de 3 mrad + punto central
+    const r = 3 * ppm;
+    extra += `<path d="M ${c - r * 0.7} ${c + r * 0.7} A ${r} ${r} 0 1 1 ${c + r * 0.7} ${c + r * 0.7}" fill="none" stroke="#ff2a1a" stroke-width="2"/>`;
+    extra += `<circle cx="${c}" cy="${c}" r="${Math.max(1.5, 0.15 * ppm)}" fill="#ff2a1a"/>`;
+  }
+  return `<svg width="${D}" height="${D}">${lines.join('')}${extra}</svg>`;
+}
+
 export class FPS {
   constructor(app) {
     this.app = app;
@@ -76,6 +111,9 @@ export class FPS {
     this.mag = w.capacity;
     this.reloading = null;
     this.adsT = 0;
+    const sd = SIGHTS[this.sight];
+    this.zoomLevel = sd.def ?? sd.zoom[0];
+    this.reticleKey = '';
     document.getElementById('scope').classList.remove('on');
     this.updateHUD();
   }
@@ -129,8 +167,30 @@ export class FPS {
   }
 
   currentZoom() {
-    const z = SIGHTS[this.sight]?.zoom || 1;
-    return 1 + (z - 1) * this.adsT;
+    return 1 + (this.zoomLevel - 1) * this.adsT;
+  }
+
+  isScoped() {
+    const sd = SIGHTS[this.sight];
+    return !!(sd.scope || (sd.scopeFrom && this.zoomLevel >= sd.scopeFrom));
+  }
+
+  // Rueda del ratón: cambia los aumentos del visor
+  adjustZoom(dir) {
+    const sd = SIGHTS[this.sight];
+    if (sd.steps) {
+      this.zoomLevel = dir > 0 ? sd.steps[sd.steps.length - 1] : sd.steps[0];
+    } else if (sd.zoom.length > 1) {
+      this.zoomLevel = THREE.MathUtils.clamp(this.zoomLevel * Math.pow(1.12, dir), sd.zoom[0], sd.zoom[1]);
+    } else return;
+    this.updateHUD();
+  }
+  toggleMagnifier() {
+    const sd = SIGHTS[this.sight];
+    if (!sd.steps) return;
+    this.zoomLevel = this.zoomLevel === sd.steps[0] ? sd.steps[1] : sd.steps[0];
+    this.app.toast(this.zoomLevel > 2 ? 'Magnificador 3x' : 'Magnificador abatido');
+    this.updateHUD();
   }
 
   isAiming() { return this.ads || this.adsHold; }
@@ -176,8 +236,10 @@ export class FPS {
       for (const h of hits) {
         const info = h.object.userData.hit;
         if (!info) continue;
+        if (info.kind === 'soft') continue; // soft cover: la bala pasa
         if (info.kind === 'paper') {
           const z = hitPaper(info.state, h.point, holeR);
+          if (z === 'HC') { zones.push('HC'); break; } // hard cover pintado: detiene la bala
           if (z) zones.push(TARGET_TYPES[info.state.type].noshoot ? 'NS' : z);
           continue; // el papel no detiene la bala
         }
@@ -354,9 +416,15 @@ export class FPS {
     }
 
     // HUD: mira telescópica y cronómetro
-    const scoped = !!SIGHTS[this.sight].scope && this.adsT > 0.85;
+    const scoped = this.isScoped() && this.adsT > 0.85;
     this.model.visible = !scoped;
     $('scope').classList.toggle('on', scoped);
+    if (scoped) this.updateReticle(dt);
+    // FOV del arma: al apuntar se "acerca" para ver mejor alza y guion
+    const vmFov = 55 + ((this.model.userData.vmAds || 55) - 55) * this.adsT;
+    if (Math.abs(this.vmCamera.fov - vmFov) > 0.01) { this.vmCamera.fov = vmFov; this.vmCamera.updateProjectionMatrix(); }
+    const mg = this.model.getObjectByName('magnifier');
+    if (mg) mg.rotation.z += ((this.zoomLevel > 2 ? 0 : Math.PI / 2) - mg.rotation.z) * (1 - Math.exp(-dt * 12));
     $('crosshair').classList.toggle('hidden', this.adsT > 0.3 || !this.app.settings.crosshair);
     if (this.run.state === 'running') $('timer').textContent = ((performance.now() - this.run.t0) / 1000).toFixed(2);
   }
@@ -384,11 +452,33 @@ export class FPS {
     }
     // corredera atrás en vacío
     const slide = this.model.getObjectByName('slide');
-    if (slide) slide.position.z = -ud.length / 2 + (this.mag === 0 ? 0.03 : this.kick * 0.03);
+    if (slide) slide.position.z = this.mag === 0 ? 0.03 : this.kick * 0.03;
     const forend = this.model.getObjectByName('forend');
     if (forend && w.pump) forend.position.z = -0.34 + (this.pumpT > 0 ? Math.sin((1 - this.pumpT / w.minInterval) * Math.PI) * 0.08 : 0);
     this.holder.position.copy(p);
     this.holder.rotation.set(rx, ry, 0);
+  }
+
+  // Retícula en el primer plano focal: las marcas son milirradianes reales a cualquier aumento
+  updateReticle(dt) {
+    const sd = SIGHTS[this.sight];
+    const H = innerHeight, W = innerWidth;
+    const R = Math.min(H, W) * 0.42;
+    const fov = THREE.MathUtils.degToRad(this.camera.fov);
+    const ppm = (H / 2) / Math.tan(fov / 2) * 0.001; // píxeles por mrad
+    const key = sd.reticle + '|' + ppm.toFixed(2) + '|' + R.toFixed(0);
+    if (key !== this.reticleKey) {
+      this.reticleKey = key;
+      $('scope').querySelector('.reticle').innerHTML = buildReticleSVG(sd.reticle, R, ppm);
+    }
+    // telémetro: distancia al punto de mira
+    this.rangeT = (this.rangeT || 0) - dt;
+    if (this.rangeT <= 0) {
+      this.rangeT = 0.12;
+      this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+      const hit = this.raycaster.intersectObjects(this.app.shootables, false).find(h => h.object.userData.hit?.kind !== 'soft');
+      $('rangefinder').textContent = `${this.zoomLevel.toFixed(1)}x   ·   ${hit ? hit.distance.toFixed(0) + ' m' : '---'}`;
+    }
   }
 
   updateHUD() {
@@ -396,7 +486,9 @@ export class FPS {
     const w = this.weapon;
     $('ammo').innerHTML = `<b>${this.mag}</b> / ${w.capacity}${this.reloading ? ' <span class="rl">recargando…</span>' : ''}`;
     $('wname').textContent = `${w.brand} ${w.model}`;
-    $('wsub').textContent = `${w.caliber} · ${w.pf === 'major' ? 'Major' : 'Minor'} · ${SIGHTS[this.sight].name}${this.ammo ? ' · ' + AMMO[this.ammo].name : ''}`;
+    const sd = SIGHTS[this.sight];
+    const zoomTxt = sd.zoom.length > 1 ? ` (${this.zoomLevel.toFixed(1)}x)` : '';
+    $('wsub').textContent = `${w.caliber} · ${w.pf === 'major' ? 'Major' : 'Minor'} · ${sd.name}${zoomTxt}${this.ammo ? ' · ' + AMMO[this.ammo].name : ''}`;
     if (this.run.state !== 'running') $('timer').textContent = this.run.state === 'ready' ? 'STANDBY' : 'LIBRE';
   }
 }

@@ -6,7 +6,7 @@
   <title>Gun Shop — IPSC Range</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="css/style.css">
-  <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+  <script type="importmap">{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }</script>
 </head>
 <body>
   <div id="game"></div>
@@ -14,10 +14,10 @@
   <!-- HUD -->
   <div id="hud" class="hidden">
     <div id="crosshair"></div>
-    <div id="scope"><div class="reticle"></div></div>
+    <div id="scope"><div class="reticle"></div><div id="rangefinder"></div></div>
     <div id="topbar"><span id="stagename"></span><span id="timer">LIBRE</span></div>
     <div id="weaponbox"><div id="wname"></div><div id="wsub"></div><div id="ammo"></div></div>
-    <div id="keys">Enter: empezar/terminar stage · T: reiniciar blancos · R: recargar · Z/Clic der.: apuntar · V: mira · B: armería · Tab: editor</div>
+    <div id="keys">Enter: empezar/terminar stage · T: reiniciar blancos · R: recargar · Z/Clic der.: apuntar · Rueda: aumentos · V: mira · M: magnificador · B: armería · Tab: editor</div>
     <div id="runmsg"></div>
     <div id="hitpop"></div>
     <div id="hint">Haz clic para capturar el ratón (o juega con flechas + espacio)</div>
@@ -85,6 +85,8 @@
             <tr><td>C</td><td>Agacharse</td></tr>
             <tr><td>V</td><td>Cambiar mira</td></tr>
             <tr><td>X</td><td>Cambiar munición (escopeta)</td></tr>
+            <tr><td>Rueda / + −</td><td>Aumentos del visor (apuntando)</td></tr>
+            <tr><td>M</td><td>Magnificador 3x del punto rojo</td></tr>
             <tr><td>Enter</td><td>«Make ready» / terminar el stage</td></tr>
             <tr><td>T</td><td>Reiniciar blancos (práctica)</td></tr>
             <tr><td>B</td><td>Armería</td></tr>
@@ -107,7 +109,8 @@
           </table>
           <h3>Puntuación (Comstock)</h3>
           <p>Cuentan los 2 mejores impactos de cada papel. A = 5; C = 4 (Major) / 3 (Minor); D = 2 / 1. Metal abatido = 5. Cada fallo (Mike) y cada impacto en un no-shoot: −10. <b>Hit Factor = puntos ÷ tiempo</b>. El tiempo se para en el último disparo.</p>
-          <p>Las paredes son cobertura dura: detienen la bala. El papel no la detiene.</p>
+          <p>Las paredes (también las transparentes) y el hard cover pintado en negro son cobertura dura: detienen la bala. El papel y el soft cover (malla) no la detienen.</p>
+          <p>Los visores tienen retícula en milirradianes (1 mrad = 10 cm a 100 m) y telémetro.</p>
         </div>
       </div>
     </div>

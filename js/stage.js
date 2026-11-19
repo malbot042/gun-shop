@@ -5,6 +5,8 @@ import { createTarget, TARGET_TYPES, resetTarget, updateTarget } from './targets
 export const PROP_TYPES = {
   wall:      { label: 'Pared 2 m', length: 2, height: 2.0 },
   lowwall:   { label: 'Pared baja 1 m', length: 2, height: 1.0 },
+  glasswall: { label: 'Pared transparente', length: 2, height: 2.0 },
+  softcover: { label: 'Soft cover (malla, la bala pasa)', length: 2, height: 2.0 },
   barrel:    { label: 'Barril', },
   faultline: { label: 'Fault line', length: 3 },
   start:     { label: 'Posición de inicio', },
@@ -54,6 +56,16 @@ const wallTex = canvasTex(256, 256, (ctx, w, h) => {
   }
 });
 
+const meshTex = canvasTex(128, 128, (ctx, w, h) => {
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(30,40,30,0.95)';
+  ctx.lineWidth = 3;
+  for (let i = 0; i <= 8; i++) {
+    ctx.beginPath(); ctx.moveTo(i * 16, 0); ctx.lineTo(i * 16, h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i * 16); ctx.lineTo(w, i * 16); ctx.stroke();
+  }
+});
+
 const MATS = {
   ground: new THREE.MeshStandardMaterial({ map: groundTex, roughness: 1 }),
   berm: new THREE.MeshStandardMaterial({ map: bermTex, roughness: 1 }),
@@ -63,10 +75,12 @@ const MATS = {
   fault: new THREE.MeshStandardMaterial({ color: 0xc8261e, roughness: 0.8 }),
   start: new THREE.MeshBasicMaterial({ color: 0xf2d230, transparent: true, opacity: 0.9 }),
   sign: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }),
+  glass: new THREE.MeshStandardMaterial({ color: 0xcfe8ff, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }),
+  glassEdge: new THREE.MeshStandardMaterial({ color: 0x8fb8d8, roughness: 0.2, metalness: 0.3, transparent: true, opacity: 0.5 }),
 };
 
 // ---------- Escenario fijo (suelo, taludes, marcas de distancia) ----------
-export const RANGE = { minX: -30, maxX: 30, minZ: -125, maxZ: 15 };
+export const RANGE = { minX: -30, maxX: 30, minZ: -320, maxZ: 15 };
 
 export function buildRange(scene) {
   const g = new THREE.Group();
@@ -96,7 +110,7 @@ export function buildRange(scene) {
   addBerm(RANGE.maxX - RANGE.minX + 8, 2.5, 2, 0, RANGE.maxZ + 1);
 
   // Carteles de distancia en el talud izquierdo
-  for (let d = 10; d <= 120; d += 10) {
+  for (const d of [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 300]) {
     const c = document.createElement('canvas'); c.width = 128; c.height = 64;
     const ctx = c.getContext('2d');
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 128, 64);
@@ -144,6 +158,35 @@ function buildProp(obj) {
       const f = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.7), MATS.frame);
       f.position.set(sx, 0.04, 0); g.add(f);
     }
+    colliders.push({ kind: 'box', hx: L / 2 + 0.02, hz: 0.06 });
+  } else if (t === 'glasswall' || t === 'softcover') {
+    const L = obj.length ?? 2;
+    const H = obj.height ?? 2.0;
+    const glass = t === 'glasswall';
+    let m;
+    if (glass) {
+      m = new THREE.Mesh(new THREE.BoxGeometry(L, H, 0.02), MATS.glass);
+      m.userData.hit = obj.blocks === false ? { kind: 'soft' } : { kind: 'hard', glass: true };
+    } else {
+      const tex = meshTex.clone(); tex.repeat.set(L * 4, H * 4); tex.needsUpdate = true;
+      m = new THREE.Mesh(new THREE.PlaneGeometry(L, H), new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.3, side: THREE.DoubleSide, roughness: 1 }));
+      m.userData.hit = { kind: 'soft' };
+      m.castShadow = true;
+    }
+    m.position.y = H / 2;
+    m.renderOrder = 2;
+    g.add(m); meshes.push(m);
+    // marco
+    const fm = glass ? MATS.glassEdge : MATS.frame;
+    for (const sx of [-L / 2, L / 2]) {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.05, H, 0.05), fm);
+      p.position.set(sx, H / 2, 0); p.castShadow = true; g.add(p);
+      p.userData.hit = { kind: 'hard' }; meshes.push(p);
+      const f = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.7), MATS.frame);
+      f.position.set(sx, 0.04, 0); g.add(f);
+    }
+    const top = new THREE.Mesh(new THREE.BoxGeometry(L, 0.04, 0.05), fm);
+    top.position.y = H; g.add(top);
     colliders.push({ kind: 'box', hx: L / 2 + 0.02, hz: 0.06 });
   } else if (t === 'barrel') {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.88, 24), MATS.barrel);
@@ -379,6 +422,21 @@ export const PRESET_STAGES = [
       { type: 'popper', x: 6, z: -100, rot: 0 },
       { type: 'plate', x: 10, z: -60, rot: 0 },
       { type: 'plate', x: -10, z: -60, rot: 0 },
+    ],
+  },
+  {
+    id: 'preset-300', name: 'Larga distancia 300 m', description: 'Para visores 3-12x / 5-25x: papel y metal de 150 a 300 m. La pared transparente deja ver pero no disparar: muévete para rodearla.',
+    objects: [
+      { type: 'start', x: 0, z: 0, rot: 0 },
+      { type: 'glasswall', x: -2, z: -3, rot: 0, length: 3, height: 2.2, blocks: true },
+      { type: 'paper', x: -4, z: -150, rot: 0, height: 1.0 },
+      { type: 'paper', x: 4, z: -150, rot: 0, height: 1.0, hardcover: 'diagL' },
+      { type: 'noshoot', x: 0, z: -150, rot: 0, height: 1.0 },
+      { type: 'plate', x: -8, z: -200, rot: 0, height: 1.2, shape: 'square', size: 0.3 },
+      { type: 'plate', x: 8, z: -200, rot: 0, height: 1.2, shape: 'round', size: 0.3 },
+      { type: 'popper', x: -3, z: -250, rot: 0 },
+      { type: 'popper', x: 3, z: -250, rot: 0 },
+      { type: 'paper', x: 0, z: -300, rot: 0, height: 1.2 },
     ],
   },
   {

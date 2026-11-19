@@ -1,5 +1,6 @@
 // Gun Shop — simulador de tiro IPSC. Punto de entrada.
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { WEAPONS, CATEGORIES, SIGHTS, AMMO, getWeapon, buildWeaponModel } from './weapons.js';
 import { buildRange, Stage, PRESET_STAGES } from './stage.js';
 import { FPS } from './fps.js';
@@ -16,6 +17,8 @@ class App {
   constructor() {
     this.settings = Object.assign({ sens: 1, arrowSens: 1, volume: 0.55, crosshair: true, hitPopups: true }, LS.get('settings', {}));
     this.stages = LS.get('stages', null) || structuredClone(PRESET_STAGES);
+    // añadir stages de ejemplo nuevos que el usuario aún no tenga
+    for (const p of PRESET_STAGES) if (!this.stages.some(s => s.id === p.id)) this.stages.push(structuredClone(p));
     this.records = LS.get('records', {});
     this.keys = new Set();
     this.mode = 'menu';
@@ -34,8 +37,13 @@ class App {
 
     const scene = this.scene = new THREE.Scene();
     scene.background = new THREE.Color(0xa9c8e6);
-    scene.fog = new THREE.Fog(0xa9c8e6, 90, 320);
-    this.camera = new THREE.PerspectiveCamera(75, 1, 0.03, 800);
+    scene.fog = new THREE.Fog(0xa9c8e6, 160, 900);
+    this.camera = new THREE.PerspectiveCamera(75, 1, 0.03, 1500);
+    // mapa de entorno: reflejos realistas en el metal de las armas
+    const pmrem = new THREE.PMREMGenerator(r);
+    this.envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = this.envMap;
+    scene.environmentIntensity = 0.12;
     scene.add(this.camera);
     scene.add(new THREE.HemisphereLight(0xd6e6ff, 0x8a7550, 1.25));
     const sun = this.sun = new THREE.DirectionalLight(0xfff1dc, 2.4);
@@ -49,6 +57,8 @@ class App {
     this.range = buildRange(scene);
     this.stage = new Stage(scene);
     this.fps = new FPS(this);
+    this.fps.vmScene.environment = this.envMap;
+    this.fps.vmScene.environmentIntensity = 0.9;
     this.editor = new Editor(this);
 
     const lo = LS.get('loadout', { id: 'glock17', sight: 'iron', ammo: null });
@@ -272,7 +282,8 @@ class App {
       r.outputColorSpace = THREE.SRGBColorSpace;
       r.toneMapping = THREE.ACESFilmicToneMapping;
       const sc = new THREE.Scene();
-      sc.add(new THREE.HemisphereLight(0xffffff, 0x445566, 2));
+      sc.environment = new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(), 0.04).texture;
+      sc.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1));
       const dl = new THREE.DirectionalLight(0xffffff, 2.5); dl.position.set(1, 2, 1.5); sc.add(dl);
       const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 20);
       const pivot = new THREE.Group(); sc.add(pivot);
@@ -301,7 +312,7 @@ class App {
     p.pivot.add(m);
     p.model = m;
     const size = box.getSize(new THREE.Vector3()).length();
-    p.cam.position.set(size * 0.75, size * 0.3, size * 0.9);
+    p.cam.position.set(size * 0.62, size * 0.2, size * 0.42);
     p.cam.lookAt(0, 0, 0);
     p.pivot.rotation.y = -0.6;
   }
@@ -372,7 +383,10 @@ class App {
       if (this.mode === 'editor') return this.editor.onMouseMove(e);
       if (this.mode === 'play' && this.locked) this.fps.look(e.movementX, e.movementY);
     });
-    canvas.addEventListener('wheel', e => { if (this.mode === 'editor') { e.preventDefault(); this.editor.onWheel(e); } }, { passive: false });
+    canvas.addEventListener('wheel', e => {
+      if (this.mode === 'editor') { e.preventDefault(); this.editor.onWheel(e); }
+      else if (this.mode === 'play') { e.preventDefault(); this.fps.adjustZoom(-Math.sign(e.deltaY)); }
+    }, { passive: false });
 
     addEventListener('keydown', e => {
       const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName);
@@ -401,6 +415,9 @@ class App {
         case 'KeyC': this.fps.crouch = !this.fps.crouch; break;
         case 'KeyV': this.fps.cycleSight(); break;
         case 'KeyX': this.fps.cycleAmmo(); break;
+        case 'KeyM': this.fps.toggleMagnifier(); break;
+        case 'Equal': case 'NumpadAdd': this.fps.adjustZoom(1); break;
+        case 'Minus': case 'NumpadSubtract': this.fps.adjustZoom(-1); break;
         case 'Enter': this.fps.makeReady(); break;
         case 'KeyT': this.fps.cancelRun(); this.stage.resetTargets(); this.fps.updateHUD(); this.toast('Blancos reiniciados'); break;
         case 'KeyB': this.openMenu('armory'); break;
