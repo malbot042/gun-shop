@@ -1,5 +1,7 @@
 # Gun Shop — IPSC Range
 
+🎯 **Jugar online:** https://malbot042.github.io/gun-shop/
+
 Simulador de tiro práctico (IPSC) en el navegador, hecho con HTML + JavaScript + [three.js](https://threejs.org) (incluido en `vendor/`, sin dependencias externas ni build).
 
 ## Cómo jugar
