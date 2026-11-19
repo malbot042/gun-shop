@@ -166,7 +166,32 @@ function getPaperGeometry() {
 }
 
 const woodMat = new THREE.MeshStandardMaterial({ color: 0x8a6a42, roughness: 0.9 });
-const steelPaint = new THREE.MeshStandardMaterial({ color: 0xe9e4d4, roughness: 0.6, metalness: 0.3 });
+// Metal pintado de amarillo
+const steelPaint = new THREE.MeshStandardMaterial({ color: 0xf2c21b, roughness: 0.55, metalness: 0.15 });
+
+// Marca de impacto en el metal: salpicadura de plomo gris sobre la pintura amarilla
+let splatTex = null;
+function splatTexture() {
+  if (splatTex) return splatTex;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 30);
+  g.addColorStop(0, 'rgba(45,46,50,1)'); g.addColorStop(0.25, 'rgba(95,97,102,1)');
+  g.addColorStop(0.6, 'rgba(160,162,166,1)'); g.addColorStop(0.85, 'rgba(195,196,198,0.85)'); g.addColorStop(1, 'rgba(210,210,210,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(32, 32, 30, 0, Math.PI * 2); ctx.fill();
+  // salpicaduras radiales
+  ctx.fillStyle = 'rgba(165,167,170,0.9)';
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2 + Math.random() * 0.3, r = 18 + Math.random() * 12;
+    ctx.beginPath(); ctx.arc(32 + Math.cos(a) * r, 32 + Math.sin(a) * r, 1.5 + Math.random() * 2, 0, Math.PI * 2); ctx.fill();
+  }
+  splatTex = new THREE.CanvasTexture(c);
+  splatTex.colorSpace = THREE.SRGBColorSpace;
+  return splatTex;
+}
+const splatMat = () => new THREE.MeshBasicMaterial({ map: splatTexture(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+let splatMaterial = null;
 const steelDark = new THREE.MeshStandardMaterial({ color: 0x555a5e, roughness: 0.5, metalness: 0.7 });
 const holeMatCache = {};
 function holeMat(color) {
@@ -246,6 +271,7 @@ export function createTarget(obj) {
         face.rotation.x = Math.PI / 2;
       }
       face.position.y = size / 2;
+      state.frontZ = 0.006;
     } else {
       const s = type === 'minipopper' ? 0.6 : 1;
       const shape = new THREE.Shape();
@@ -266,6 +292,7 @@ export function createTarget(obj) {
       group.add(base);
       state.meshes.push(base);
       pivot.position.y = 0.06 + baseH;
+      state.frontZ = 0.006 * s;
     }
     face.castShadow = true;
     face.userData.hit = { kind: 'steel', state };
@@ -303,7 +330,20 @@ export function hitPaper(state, worldPoint, holeSize = 0.0045) {
   return res;
 }
 
-export function hitSteel(state, dir) {
+// Impacto en metal: deja la marca (también si ya ha caído) y lo abate la primera vez.
+export function hitSteel(state, worldPoint, holeR = 0.0045) {
+  if (worldPoint) {
+    const local = state.pivot.worldToLocal(worldPoint.clone());
+    if (local.z > 0) { // solo en la cara delantera
+      splatMaterial = splatMaterial || splatMat();
+      const size = Math.max(0.012, holeR * 9); // la pintura salta en un círculo de 3–4 cm
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), splatMaterial);
+      m.position.set(local.x, local.y, state.frontZ + 0.0006);
+      m.rotation.z = Math.random() * Math.PI * 2;
+      state.pivot.add(m);
+      state.holes.push(m);
+    }
+  }
   if (state.down) return false;
   state.down = true;
   state.hits.push('S');

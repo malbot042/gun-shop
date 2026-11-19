@@ -255,7 +255,7 @@ export class FPS {
         }
         if (info.kind === 'steel') {
           const st = info.state;
-          if (hitSteel(st)) zones.push('STEEL');
+          if (hitSteel(st, h.point, holeR)) zones.push('STEEL');
           Audio.steelPing(h.distance);
           this.spawnEffect(h.point, SPARK_TEX, 0.12, 0.15);
           break;

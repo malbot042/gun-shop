@@ -138,9 +138,9 @@ td.neg { color: var(--red); }
 .ico-paper { background: #c9a36b; clip-path: polygon(33% 0,67% 0,100% 26%,100% 74%,67% 100%,33% 100%,0 74%,0 26%); }
 .ico-mini { background: #c9a36b; transform: scale(0.7); clip-path: polygon(33% 0,67% 0,100% 26%,100% 74%,67% 100%,33% 100%,0 74%,0 26%); }
 .ico-noshoot { background: #f4f2ec; clip-path: polygon(33% 0,67% 0,100% 26%,100% 74%,67% 100%,33% 100%,0 74%,0 26%); }
-.ico-popper { background: #e9e4d4; clip-path: polygon(20% 0,80% 0,80% 45%,60% 50%,70% 100%,30% 100%,40% 50%,20% 45%); }
-.ico-minipopper { background: #e9e4d4; transform: scale(0.7); clip-path: polygon(20% 0,80% 0,80% 45%,60% 50%,70% 100%,30% 100%,40% 50%,20% 45%); }
-.ico-plate { background: #e9e4d4; border-radius: 50%; }
+.ico-popper { background: #f2c21b; clip-path: polygon(20% 0,80% 0,80% 45%,60% 50%,70% 100%,30% 100%,40% 50%,20% 45%); }
+.ico-minipopper { background: #f2c21b; transform: scale(0.7); clip-path: polygon(20% 0,80% 0,80% 45%,60% 50%,70% 100%,30% 100%,40% 50%,20% 45%); }
+.ico-plate { background: #f2c21b; border-radius: 50%; }
 .ico-wall { background: #d8cfbd; }
 .ico-lowwall { background: linear-gradient(transparent 50%, #d8cfbd 50%); }
 .ico-glasswall { background: rgba(160,210,255,0.35); border: 2px solid #8fb8d8; }
