@@ -50,7 +50,7 @@ El editor **importa y exporta en el mismo formato JSON** que el Stage Designer (
 | Tirador | |
 |---|---|
 | Ratón / flechas | Apuntar |
-| WASD (Mayús: correr) | Moverse |
+| WASD (Mayús: caminar) | Moverse (por defecto se corre) |
 | Clic izq. / Espacio | Disparar |
 | Clic der. (mantener) / Z | Apuntar con la mira |
 | R | Recargar |

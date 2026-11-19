@@ -352,7 +352,9 @@ export class FPS {
     // Movimiento WASD
     const fw = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0);
     const st = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
-    const running = (keys.has('ShiftLeft') || keys.has('ShiftRight')) && !this.isAiming() && !this.crouch;
+    // por defecto se corre; con Mayús se camina (apuntando o agachado también se camina)
+    const walking = keys.has('ShiftLeft') || keys.has('ShiftRight');
+    const running = !walking && !this.isAiming() && !this.crouch;
     let speed = running ? 6.2 : 3.6;
     if (this.crouch) speed = 1.8;
     if (this.isAiming()) speed *= 0.55;
