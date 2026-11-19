@@ -55,10 +55,10 @@ El editor **importa y exporta en el mismo formato JSON** que el Stage Designer (
 |---|---|
 | Ratón / flechas | Apuntar |
 | WASD (Mayús: caminar) | Moverse (por defecto se corre) |
-| Clic izq. / Espacio | Disparar |
+| Clic izq. / F | Disparar |
 | Clic der. (mantener) / Z | Apuntar con la mira |
 | R | Recargar |
-| C | Agacharse |
+| Espacio | Postura: 1.ª pulsación agachado (medio cuerpo), 2.ª agachado del todo, 3.ª de pie |
 | V / X | Cambiar mira / munición |
 | Rueda / + − | Aumentos del visor |
 | M | Magnificador 3x |

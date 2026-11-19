@@ -7,7 +7,12 @@ import * as Audio from './audio.js';
 
 const $ = id => document.getElementById(id);
 const BASE_FOV = 75;
-const EYE = 1.65, EYE_CROUCH = 1.15;
+// Posturas: 0 de pie, 1 agachado (medio cuerpo), 2 agachado del todo (cuerpo entero)
+const STANCES = [
+  { name: 'De pie', eye: 1.65, speed: null, spread: 1, recoil: 1 },
+  { name: 'Agachado', eye: 1.15, speed: 1.8, spread: 0.8, recoil: 0.85 },
+  { name: 'Agachado del todo', eye: 0.75, speed: 0.9, spread: 0.7, recoil: 0.75 },
+];
 
 function makeSpriteTex(inner, outer) {
   const c = document.createElement('canvas'); c.width = c.height = 64;
@@ -65,8 +70,8 @@ export class FPS {
     this.pos = new THREE.Vector3(0, 0, 5);
     this.vel = new THREE.Vector3();
     this.yaw = 0; this.pitch = 0;
-    this.eye = EYE;
-    this.crouch = false;
+    this.eye = STANCES[0].eye;
+    this.stance = 0;
     this.bob = 0;
     this.recoilPitch = 0; this.recoilYaw = 0;
     this.ads = false; this.adsHold = false; this.adsT = 0;
@@ -158,6 +163,15 @@ export class FPS {
     this.updateHUD();
   }
 
+  // Barra espaciadora: de pie → agachado → agachado del todo → de pie
+  cycleStance() {
+    this.stance = (this.stance + 1) % STANCES.length;
+    this.app.toast(STANCES[this.stance].name);
+  }
+  // compatibilidad: «agachado» = cualquier postura que no sea de pie
+  get crouch() { return this.stance > 0; }
+  set crouch(v) { this.stance = v ? 1 : 0; }
+
   // ---------------- Jugador ----------------
   spawn(start) {
     this.pos.set(start.x, 0, start.z);
@@ -165,6 +179,7 @@ export class FPS {
     this.pitch = 0;
     this.vel.set(0, 0, 0);
     this.recoilPitch = this.recoilYaw = 0;
+    this.stance = 0;
   }
 
   look(dx, dy) {
@@ -225,7 +240,7 @@ export class FPS {
     let spreadM = w.spread;
     if (!this.isAiming() || this.adsT < 0.8) spreadM += w.category === 'handgun' ? 6 : 10;
     spreadM += hspeed / 4 * (w.category === 'handgun' ? 5 : 8);
-    if (this.crouch) spreadM *= 0.8;
+    spreadM *= STANCES[this.stance].spread;
     const ammo = this.ammo ? AMMO[this.ammo] : null;
     const pellets = ammo ? ammo.pellets : 1;
     const holeR = ammo ? ammo.hole : (w.category === 'rifle' ? (w.caliber.startsWith('7.62') ? 0.0038 : w.caliber.startsWith('9') ? 0.0045 : 0.0029) : (w.pf === 'major' ? 0.0052 : 0.0045));
@@ -269,7 +284,7 @@ export class FPS {
     if (zones.length) this.app.hitPopup(zones);
 
     // Retroceso
-    this.recoilPitch += w.recoil * (0.85 + Math.random() * 0.3) * (this.crouch ? 0.85 : 1);
+    this.recoilPitch += w.recoil * (0.85 + Math.random() * 0.3) * STANCES[this.stance].recoil;
     this.recoilYaw += (Math.random() - 0.5) * w.recoil * 0.5;
     this.kick = 1;
     this.flash.visible = true;
@@ -354,9 +369,9 @@ export class FPS {
     const st = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
     // por defecto se corre; con Mayús se camina (apuntando o agachado también se camina)
     const walking = keys.has('ShiftLeft') || keys.has('ShiftRight');
-    const running = !walking && !this.isAiming() && !this.crouch;
+    const running = !walking && !this.isAiming() && !this.stance;
     let speed = running ? 6.2 : 3.6;
-    if (this.crouch) speed = 1.8;
+    if (this.stance) speed = STANCES[this.stance].speed;
     if (this.isAiming()) speed *= 0.55;
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
     const target = new THREE.Vector3(
@@ -369,7 +384,7 @@ export class FPS {
 
     const hs = Math.hypot(this.vel.x, this.vel.z);
     this.bob += dt * hs * 2.2;
-    const eyeTarget = this.crouch ? EYE_CROUCH : EYE;
+    const eyeTarget = STANCES[this.stance].eye;
     this.eye += (eyeTarget - this.eye) * (1 - Math.exp(-dt * 10));
 
     // ADS

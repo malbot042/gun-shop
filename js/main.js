@@ -449,10 +449,11 @@ class App {
       if (e.repeat) return;
       Audio.initAudio();
       switch (e.code) {
-        case 'Space': this.fps.fire(); break;
+        case 'Space': this.fps.cycleStance(); break;
+        case 'KeyF': this.fps.fire(); break;
         case 'KeyR': this.fps.startReload(); break;
         case 'KeyZ': this.fps.ads = !this.fps.ads; if (this.fps.ads) this.fps.aimPressed(); break;
-        case 'KeyC': this.fps.crouch = !this.fps.crouch; break;
+        case 'KeyC': this.fps.cycleStance(); break;
         case 'KeyV': this.fps.cycleSight(); break;
         case 'KeyX': this.fps.cycleAmmo(); break;
         case 'KeyM': this.fps.toggleMagnifier(); break;
