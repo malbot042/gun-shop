@@ -21,6 +21,7 @@ También funciona tal cual en **GitHub Pages** (Settings → Pages → rama `mai
 - **Miras**: abiertas con alza en U (puntos de tritio) y guion de fibra óptica, diópter tipo AR, bead y ghost ring en escopeta; al apuntar el arma se acerca para alinear mejor. Punto rojo en todas las armas, punto rojo + magnificador 3x abatible (M), y visores LPVO 1-6x, 3-12x y 5-25x con aumentos variables (rueda), retícula en milirradianes y telémetro.
 - **Munición de escopeta**: slug, postas y perdigón (con dispersión de perdigones); carga cartucho a cartucho en las de tubo.
 - **Blancos oficiales IPSC**: IPSC Target octogonal sin cabeza (45 × 57 cm, A 15 × 32,5, C 30 × 45, borde de 0,5 cm no puntuable), IPSC Mini Target (⅔) y No-Shoot con hard cover pintado opcional; IPSC Popper, Mini Popper y Metal Plates redondas o cuadradas de 15/20/30 cm.
+- **Blancos superpuestos**: el área puntuable de tarjetas y no-shoots es impenetrable: solo puntúa el blanco de delante, salvo que el impacto rompa su línea troquelada o caiga entero en su borde no puntuable (entonces cuenta también el de detrás). Un impacto que toca la línea entre dos zonas puntúa la de más valor.
 - **Balística simple**: el papel y el soft cover (malla) no detienen la bala; las paredes, las paredes transparentes y el hard cover pintado sí.
 - **Campo de 300 m** con carteles de distancia y un stage de larga distancia para visores.
 - **Render**: modelos con perfiles biselados, piezas redondeadas y reflejos metálicos (mapa de entorno).

@@ -45,6 +45,23 @@ export function paperZone(x, y, scale = 1) {
   return 'D';
 }
 
+// Impacto con el diámetro de la bala (coordenadas locales, sin escalar):
+//  - Puntúa si el agujero toca el área puntuable; si toca la línea entre dos zonas, la de más valor.
+//  - El área puntuable de tarjetas y no-shoots es impenetrable: la bala se queda en el primer blanco.
+//    Solo sigue hacia el blanco de detrás si el agujero rompe la línea troquelada del borde (lo toca)
+//    o si cae entero en el borde no puntuable (bajo ese borde, el blanco de detrás sí existe).
+// Devuelve { zone: 'A'|'C'|'D'|null, pass: bool }.
+export function scorePaperHit(x, y, scale = 1, holeR = 0.0045) {
+  const r = holeR / scale, e = EDGE / scale;
+  if (!pointInPoly(x, y, OUTLINE)) return { zone: null, pass: true };
+  const d = distToEdge(x, y, OUTLINE);
+  if (d <= e - r) return { zone: null, pass: true };          // entero en el borde no puntuable
+  const breaksPerf = d < e + r;                                  // corta la línea troquelada
+  const touches = poly => pointInPoly(x, y, poly) || distToEdge(x, y, poly) < r;
+  const zone = touches(ZONE_A) ? 'A' : touches(ZONE_C) ? 'C' : 'D';
+  return { zone, pass: breaksPerf };
+}
+
 // Hard cover pintado (negro) sobre el cartón: la bala no puntúa y se detiene.
 export const HARDCOVER = {
   none:   { label: 'Sin hard cover', poly: null },
@@ -262,15 +279,20 @@ export function createTarget(obj) {
 }
 
 // Registra un impacto en papel. worldPoint: punto de impacto. Devuelve la zona.
+// Registra un impacto en cartón. Devuelve { zone: 'A'|'C'|'D'|'HC'|null, pass } (ver scorePaperHit).
 export function hitPaper(state, worldPoint, holeSize = 0.0045) {
   const local = state.paper.worldToLocal(worldPoint.clone());
-  if (cutAway(state.obj.corte, local.x, local.y)) return null; // media tarjeta: esa mitad no existe
-  let zone = paperZone(local.x, local.y, state.paper.scale.x);
-  if (!zone) return null;
-  const hcPoly = HARDCOVER[state.obj.hardcover || 'none']?.poly;
-  if (hcPoly && pointInPoly(local.x, local.y, hcPoly)) zone = 'HC';
-  else state.hits.push(zone);
+  if (cutAway(state.obj.corte, local.x, local.y)) return { zone: null, pass: true }; // media tarjeta: esa mitad no existe
   const s = state.paper.scale.x;
+  const res = scorePaperHit(local.x, local.y, s, holeSize);
+  if (!res.zone && !pointInPoly(local.x, local.y, OUTLINE)) return res;
+  // hard cover pintado: si el agujero cae entero en lo pintado, no puntúa y la bala se detiene
+  const hcPoly = HARDCOVER[state.obj.hardcover || 'none']?.poly;
+  if (res.zone && hcPoly && pointInPoly(local.x, local.y, hcPoly) && distToEdge(local.x, local.y, hcPoly) >= holeSize / s) {
+    res.zone = 'HC'; res.pass = false;
+  } else if (res.zone) {
+    state.hits.push(res.zone);
+  }
   for (const side of [1, -1]) {
     const hole = new THREE.Mesh(new THREE.CircleGeometry(holeSize / s, 10), holeMat(side > 0 ? 0x1a120a : 0x3a2a18));
     hole.position.set(local.x, local.y, 0.0008 * side / s);
@@ -278,7 +300,7 @@ export function hitPaper(state, worldPoint, holeSize = 0.0045) {
     state.paper.add(hole);
     state.holes.push(hole);
   }
-  return zone;
+  return res;
 }
 
 export function hitSteel(state, dir) {

@@ -238,10 +238,11 @@ export class FPS {
         if (!info) continue;
         if (info.kind === 'soft') continue; // soft cover: la bala pasa
         if (info.kind === 'paper') {
-          const z = hitPaper(info.state, h.point, holeR);
-          if (z === 'HC') { zones.push('HC'); break; } // hard cover pintado: detiene la bala
-          if (z) zones.push(TARGET_TYPES[info.state.type].noshoot ? 'NS' : z);
-          continue; // el papel no detiene la bala
+          const r = hitPaper(info.state, h.point, holeR);
+          if (r.zone === 'HC') { zones.push('HC'); break; } // hard cover pintado: detiene la bala
+          if (r.zone) zones.push(TARGET_TYPES[info.state.type].noshoot ? 'NS' : r.zone);
+          if (!r.pass) break; // área puntuable impenetrable: el blanco de detrás no cuenta
+          continue;           // borde no puntuable o línea troquelada rota: sigue al de detrás
         }
         if (info.kind === 'steel') {
           const st = info.state;
